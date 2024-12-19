@@ -208,7 +208,7 @@ def main():
 
     # Check if the path exists
     if not path_obj.exists():
-        raise FileNotFoundError(f"The path '{path}' does not exist.")
+        raise FileNotFoundError(f"The path '{path_obj}' does not exist.")
 
     ishards = []
 
