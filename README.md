@@ -59,7 +59,7 @@ poetry run evaluate -t visualize -m tableformer -b DPBench -i <location-of-dpben
 
 The final result can be visualised as,
 
-[DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.pdf)
+![DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.pdf)
 
 
 ## Contributing
