@@ -37,6 +37,43 @@ docling-eval % poetry run evaluate --help
 
 ## End to End examples
 
+### Layout evaluation for DP-Bench
+
+👉 Create the dataset,
+
+```sh
+poetry run evaluate -t create -m layout -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-layout
+```
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+| id |          label | MaP[0.5:0.95] |
+| -- | -------------- | ------------- |
+|  0 |    page_header |         0.151 |
+|  1 |           text |         0.678 |
+|  2 | section_header |         0.443 |
+|  3 |       footnote |         0.221 |
+|  4 |        picture |         0.761 |
+|  5 |        caption |         0.458 |
+|  6 |    page_footer |         0.344 |
+|  7 | document_index |         0.755 |
+|  8 |        formula |         0.066 |
+|  9 |          table |         0.891 |
+
+👉 Visualise the dataset,
+
+```sh
+poetry run evaluate -t visualize -m tableformer -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+The final result can be visualised as,
+
+
+
 ### Table evaluations for DP-Bench
 
 👉 Create the dataset,
