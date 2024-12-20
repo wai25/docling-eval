@@ -120,7 +120,7 @@ def visualise(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, 
             plt.ylabel("Frequency")
             plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
 
-            figname = odir / f"evaluation_{benchmark.value}_{modality.value}.pdf"
+            figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
             logging.info(f"saving figure to {figname}")
             plt.savefig(figname)
 
