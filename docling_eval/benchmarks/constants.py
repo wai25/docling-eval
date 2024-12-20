@@ -15,3 +15,26 @@ class BenchMarkColumns(Enum):
     PICTURES = "pictures"
 
     MIMETYPE = "mimetype"
+
+class BenchMarkNames(Enum):    
+
+    # End-to-End
+    DPBENCH = "DPBench"
+    OMNIDOCBENCH = "OmniDcoBench"
+    WORDSCAPE = "WordScape"
+    
+    # Layout
+    PUBLAYNET = "PubLayNet"
+    DOCLAYNET = "DocLayNet"
+
+    # Table
+    PUB1M = "Pub1M"
+    PUBTABNET = "PubTabNet"
+    FINTABNET = "FinTabNet"
+    WIKITABNET = "WikiTabNet"
+
+    # Formula
+    # ???
+
+    # OCR
+    # ???

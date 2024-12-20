@@ -301,8 +301,10 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
         }
         records.append(record)
 
-    save_shard_to_disk(items=records, dataset_path=output_dir)
+    save_shard_to_disk(items=records, dataset_path=output_dir / "test")
 
+    write_datasets_info(name="DPBench: end-to-end", output_dir=output_dir,
+                        num_train_rows=0, num_test_rows=len(records))
 
 def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
 
@@ -460,7 +462,10 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
         records.append(record)
 
     save_shard_to_disk(items=records, dataset_path=output_dir)
-
+    
+    write_datasets_info(name="DPBench: tableformer", output_dir=output_dir,
+                        num_train_rows=0, num_test_rows=len(records))
+    
 
 def parse_arguments():
     """Parse arguments for DP-Bench parsing."""
@@ -520,6 +525,10 @@ def main():
     os.makedirs(odir_tab, exist_ok=True)
     # os.makedirs(odir_eqn, exist_ok=True)
 
+    for _ in ["test", "train"]:
+        os.makedirs(odir_e2e / _, exist_ok=True)
+        os.makedirs(odir_tab / _, exist_ok=True)
+    
     if mode == "end-2-end":
         create_e2e_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_e2e, image_scale=image_scale
