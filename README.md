@@ -38,7 +38,7 @@ docling-eval % poetry run evaluate --help
 ## End to End examples
 
 <details>
-<summary>### Layout evaluation for DP-Bench</summary>
+<summary>**Layout evaluation for DP-Bench**</summary>
 
 👉 Create the dataset,
 
@@ -66,7 +66,8 @@ poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbenc
 |  9 |          table |         0.891 |
 </details>
 
-### Table evaluations for DP-Bench
+<details>
+<summary>**Table evaluations for DP-Bench**</summary>
 
 👉 Create the dataset,
 
@@ -89,7 +90,7 @@ poetry run evaluate -t visualize -m tableformer -b DPBench -i ./benchmarks/dpben
 The final result can be visualised as,
 
 ![DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.png)
-
+</details>
 
 ## Contributing
 
