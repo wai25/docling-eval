@@ -11,7 +11,9 @@ from docling_eval.benchmarks.constants import BenchMarkNames
 
 from docling_eval.benchmarks.dpbench.create import create_dpbench_e2e_dataset, create_dpbench_tableformer_dataset
 
-from docling_eval.evaluators.table_evaluator import TableEvaluator
+from docling_eval.evaluators.table_evaluator import TableEvaluator, DatasetTableEvaluation
+
+import matplotlib.pyplot as plt
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +32,7 @@ app = typer.Typer(
 class EvaluationTask(str, Enum):
     CREATE = "create"
     EVALUATE = "evaluate"
+    VISUALIZE = "visualize"
 
 class EvaluationModality(str, Enum):
     END2END = "end-to-end"
@@ -86,6 +89,43 @@ def evaluate(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, o
         json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
     log.info("The evaluation has been saved in '%s'", save_fn)
 
+def visualise(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, odir:Path):
+
+    filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
+        
+    match modality:
+        case EvaluationModality.END2END:
+            pass
+        
+        case EvaluationModality.LAYOUT:
+            pass
+
+        case EvaluationModality.TABLEFORMER:
+
+            with open(filename, "r") as fd:
+                evaluation = DatasetTableEvaluation.parse_file(filename) 
+
+            # Calculate bin widths
+            bin_widths = [evaluation.TEDS.bins[i + 1] - evaluation.TEDS.bins[i] for i in range(len(evaluation.TEDS.bins) - 1)]
+
+            for i in range(len(evaluation.TEDS.bins)-1):
+                logging.info(f"{i:02} [{evaluation.TEDS.bins[i]:.3f}, {evaluation.TEDS.bins[i+1]:.3f}]: {evaluation.TEDS.hist[i]}")
+                
+            # Plot histogram
+            plt.bar(evaluation.TEDS.bins[0:-1], evaluation.TEDS.hist, width=bin_widths, edgecolor="black")
+            #width=(evaluation.TEDS.bins[1] - evaluation.TEDS.bins[0]),
+                    
+            plt.xlabel("TEDS")
+            plt.ylabel("Frequency")
+            plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
+            plt.show()
+
+        case EvaluationModality.CODEFORMER:
+            pass
+
+        case _:
+            pass
+        
 @app.command(no_args_is_help=True)
 def main(
     task: Annotated[
@@ -140,6 +180,9 @@ def main(
 
     elif task == EvaluationTask.EVALUATE:
         evaluate(modality, benchmark, idir, odir)
+
+    elif task == EvaluationTask.VISUALIZE:
+        visualise(modality, benchmark, idir, odir)        
 
     else:
         _log.error("Unsupported command: '%s'", command)
