@@ -81,7 +81,7 @@ def evaluate(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, o
             pass
 
     # Save the evaluation
-    save_fn = odir / f"evaluation_{benchmark}_{modality}.json"
+    save_fn = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
     with open(save_fn, "w") as fd:
         json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
     log.info("The evaluation has been saved in '%s'", save_fn)

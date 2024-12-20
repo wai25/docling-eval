@@ -8,8 +8,10 @@ import glob
 import statistics
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, List
 from tqdm import tqdm
+
+import numpy as np
 
 import datasets
 
@@ -28,21 +30,50 @@ _log = logging.getLogger(__name__)
 
 
 class TableEvaluation(BaseModel):
-    # filename: str
+    filename: str = None
+    table_id: int = -1 
     TEDS: float
     is_complex: bool = False
 
+class DatasetStatistics(BaseModel):
+    total: int
 
+    mean: float
+    median: float
+    std: float
+
+    bins: Tuple[float, float, float, float, float,
+                float, float, float, float, float,
+                float, float, float, float, float,
+                float, float, float, float, float,
+                float]
+    
+    hist: Tuple[float, float, float, float, float,
+                float, float, float, float, float,
+                float, float, float, float, float,
+                float, float, float, float, float]
+    
 class DatasetTableEvaluation(BaseModel):
     evaluations: list[TableEvaluation]
-    total_mean_TEDS: float = 0.0
-    simple_mean_TEDS: float = 0.0
-    complex_mean_TEDS: float = 0.0
-    total_std_TEDS: Optional[float] = None
-    simple_std_TEDS: Optional[float] = None
-    complex_std_TEDS: Optional[float] = None
 
+    TEDS: DatasetStatistics
+    TEDS_simple: DatasetStatistics
+    TEDS_complex: DatasetStatistics
 
+def compute_stats(values: List[float]) -> DatasetStatistics:
+    total:int = len(values)
+
+    mean:float = statistics.mean(values) if len(values) > 0 else None
+    median:float = statistics.median(values) if len(values) > 0 else None
+    std:float = statistics.stdev(values) if len(values) > 0 else None
+    logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
+    
+    # Compute the histogram with 20 bins between 0 and 1
+    hist, bins = np.histogram(values, bins=20, range=(0, 1))
+    logging.info(f"#-hist: {len(hist)}, #-bins: {len(bins)}")
+
+    return DatasetStatistics(total=total, mean=mean, median=median, std=std, hist=hist, bins=bins)
+    
 def is_complex_table(table: TableItem) -> bool:
     r"""
     Implement the logic to check if table is complex
@@ -112,35 +143,18 @@ class TableEvaluator:
         teds_complex = []
         teds_all = []
         for te in table_evaluations:
+            teds_all.append(te.TEDS)
+            
             if te.is_complex:
                 teds_complex.append(te.TEDS)
             else:
                 teds_simple.append(te.TEDS)
-            teds_all.append(te.TEDS)
-
-        all_mean_TEDS = statistics.mean(teds_all) if len(teds_simple) > 0 else None
-        simple_mean_TEDS = (
-            statistics.mean(teds_simple) if len(teds_simple) > 0 else None
-        )
-        complex_mean_TEDS = (
-            statistics.mean(teds_complex) if len(teds_complex) > 0 else None
-        )
-        all_std_TEDS = statistics.stdev(teds_all) if len(teds_simple) >= 2 else None
-        simple_std_TEDS = (
-            statistics.stdev(teds_simple) if len(teds_simple) >= 2 else None
-        )
-        complex_std_TEDS = (
-            statistics.stdev(teds_complex) if len(teds_complex) >= 2 else None
-        )
 
         dataset_evaluation = DatasetTableEvaluation(
-            evaluations=table_evaluations,
-            total_mean_TEDS=all_mean_TEDS,
-            simple_mean_TEDS=simple_mean_TEDS,
-            complex_mean_TEDS=complex_mean_TEDS,
-            total_std_TEDS=all_std_TEDS,
-            simple_std_TEDS=simple_std_TEDS,
-            complex_std_TEDS=complex_std_TEDS,
+            evaluations = table_evaluations,
+            TEDS = compute_stats(teds_all),
+            TEDS_simple = compute_stats(teds_simple),
+            TEDS_complex = compute_stats(teds_complex),
         )
         return dataset_evaluation
 
@@ -156,8 +170,7 @@ class TableEvaluator:
         gt_tables = gt_doc.tables
         pred_tables = pred_doc.tables
 
-        logging.info(f"#-true-tables: {len(gt_tables)}, #-pred-tables: {len(pred_tables)}")
-        
+        # logging.info(f"#-true-tables: {len(gt_tables)}, #-pred-tables: {len(pred_tables)}")        
         assert len(gt_tables)==len(pred_tables), "len(gt_tables)!=len(pred_tables)"
         
         for table_id in range(len(gt_tables)):#, len(pred_tables)):
@@ -177,10 +190,10 @@ class TableEvaluator:
                 gt_html_obj = html.fromstring(gt_html)
                 predicted_html_obj = html.fromstring(predicted_html)
                 teds = self._teds_scorer(gt_html_obj, predicted_html_obj, structure_only)
-                logging.info(f"teds: {teds}")
+                #logging.info(f"teds: {teds}")
                 
                 teds = round(teds, 3)
-                table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex)
+                table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex, filename=doc_id, table_id=table_id)
                 table_evaluations.append(table_evaluation)
             except Exception as exc:
                 logging.error(f"Table {table_id} from document {doc_id} could not be compared!")
