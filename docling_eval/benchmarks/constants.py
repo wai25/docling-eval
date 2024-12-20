@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class BenchMarkColumns(Enum):
+class BenchMarkColumns(str, Enum):
     DOCLING_VERSION = "docling_version"
 
     STATUS = "status"
@@ -17,7 +17,7 @@ class BenchMarkColumns(Enum):
     MIMETYPE = "mimetype"
 
 
-class BenchMarkNames(Enum):
+class BenchMarkNames(str, Enum):
 
     # End-to-End
     DPBENCH = "DPBench"

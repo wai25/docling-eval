@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Dict, List
+from tqdm import tqdm
 
 import pypdfium2 as pdfium
 
@@ -234,7 +235,7 @@ def update(doc: DoclingDocument, annots: Dict, page_width: float, page_height: f
         return
 
 
-def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
+def create_dpbench_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
 
     # Create Converter
     doc_converter = create_converter(
@@ -247,10 +248,10 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
 
     records = []
 
-    for filename, annots in gt.items():
+    for filename, annots in tqdm(gt.items(), desc="Processing files for DP-Bench with end-to-end", total=len(gt), ncols=128):
 
         pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
-        logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
+        # logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
 
         conv_results = doc_converter.convert(source=pdf_path, raises_on_error=True)
 
@@ -271,24 +272,6 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
         for elem in annots["elements"]:
             update(true_doc, elem, page_width=page_width, page_height=page_height)
 
-        """
-        item = {
-            "docling_version": docling_version(),
-            "conversion_status": str(conv_results.status),
-            "document_hash": str(filename),
-            "GroundTruthDocument": json.dumps(true_doc.export_to_dict()),
-            "PredictedDocument": json.dumps(pred_doc.export_to_dict()),
-            "BinaryDocument": get_binary(pdf_path),
-            "mimetype": str(pred_doc.origin.mimetype),
-            page_images_column: page_images,
-            pictures_column: pictures,
-            "num_pages": len(true_doc.pages),
-            "num_texts": len(true_doc.texts),
-            "num_tables": len(true_doc.tables),
-            "num_pictures": len(true_doc.pictures),
-        }
-        items.append(item)
-        """
         record = {
             BenchMarkColumns.DOCLING_VERSION: docling_version(),
             BenchMarkColumns.STATUS: str(conv_results.status),
@@ -302,7 +285,10 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
         }
         records.append(record)
 
-    save_shard_to_disk(items=records, dataset_path=output_dir / "test")
+    test_dir = output_dir / "test"
+    os.makedirs(test_dir, exist_ok=True)
+    
+    save_shard_to_disk(items=records, dataset_path=test_dir)
 
     write_datasets_info(
         name="DPBench: end-to-end",
@@ -312,7 +298,7 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
     )
 
 
-def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
+def create_dpbench_tableformer_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
 
     tf_config = init_tf_model()
 
@@ -322,10 +308,10 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
 
     records = []
 
-    for filename, annots in gt.items():
+    for filename, annots in tqdm(gt.items(), desc="Processing files for DP-Bench with TableFormer", total=len(gt), ncols=128):
 
         pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
-        logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
+        # logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
 
         parsed_doc = get_page_cells(str(pdf_path))
         if parsed_doc == None:
@@ -387,14 +373,14 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
             if isinstance(item, PictureItem):
                 for prov in item.prov:
                     page_image = page_images[prov.page_no - 1]
-                    page_image.show()
+                    # page_image.show()
 
                     picture_image = crop_bounding_box(
                         page_image=page_image,
                         page=true_doc.pages[prov.page_no],
                         bbox=prov.bbox,
                     )
-                    picture_image.show()
+                    # picture_image.show()
 
                     image_ref = ImageRef(
                         mimetype="image/png",
@@ -410,10 +396,8 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
                     picture_json = item.model_dump(
                         mode="json", by_alias=True, exclude_none=True
                     )
-                    print(json.dumps(picture_json, indent=2))
+                    # print(json.dumps(picture_json, indent=2))
                     pictures.append(picture_image)
-
-                    exit(-1)
 
         # deep copy of the true-document
         pred_doc = copy.deepcopy(true_doc)
@@ -467,7 +451,10 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
         }
         records.append(record)
 
-    save_shard_to_disk(items=records, dataset_path=output_dir)
+    test_dir = output_dir / "test"
+    os.makedirs(test_dir, exist_ok=True)
+    
+    save_shard_to_disk(items=records, dataset_path=test_dir)
 
     write_datasets_info(
         name="DPBench: tableformer",
@@ -540,21 +527,21 @@ def main():
         os.makedirs(odir_tab / _, exist_ok=True)
 
     if mode == "end-2-end":
-        create_e2e_dataset(
+        create_dpbench_e2e_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_e2e, image_scale=image_scale
         )
 
     elif mode == "table":
-        create_table_dataset(
+        create_dpbench_tableformer_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_tab, image_scale=image_scale
         )
 
     elif mode == "all":
-        create_e2e_dataset(
+        create_dpbench_e2e_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_e2e, image_scale=image_scale
         )
 
-        create_table_dataset(
+        create_dpbench_tableformer_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_tab, image_scale=image_scale
         )
 

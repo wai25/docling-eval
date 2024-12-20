@@ -4,17 +4,25 @@
 #
 import logging
 import os
+import glob
 import statistics
 import time
 from pathlib import Path
 from typing import Optional
+from tqdm import tqdm
 
 import datasets
+
 from docling_core.types.doc.document import DoclingDocument, TableItem
 from lxml import html
 from pydantic import BaseModel
 
 from docling_eval.utils.teds import TEDScorer
+
+from datasets import Dataset
+from datasets import load_dataset
+
+from docling_eval.benchmarks.constants import BenchMarkColumns
 
 _log = logging.getLogger(__name__)
 
@@ -54,23 +62,50 @@ class TableEvaluator:
         self._teds_scorer = TEDScorer()
         self._stopwords = ["<i>", "</i>", "<b>", "</b>", "<u>", "</u>"]
 
-    def __call__(self, ds_path: Path, split: str) -> DatasetTableEvaluation:
+    def __call__(self, ds_path: Path, split: str="test") -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
         "GTDoclingDocument"
         "PredictionDoclingDocument"
         """
+        logging.info(f"loading from: {ds_path}")
+
+        # Load the Parquet file
+        #dataset = Dataset.from_parquet("benchmarks/dpbench-tableformer/test/shard_000000_000000.parquet")
+        #dataset.save_to_disk("benchmarks/dpbench-tableformer-dataset")
+
+        test_path = str(ds_path / "test" / "*.parquet")
+        train_path = str(ds_path / "train" / "*.parquet")
+        
+        test_files = glob.glob(test_path)
+        train_files = glob.glob(train_path)
+        logging.info(f"test-files: {test_files}, train-files: {train_files}")
+        
+        # Load all files into the `test`-`train` split
+        ds = None
+        if len(test_files)>0 and len(train_files)>0:
+            ds = load_dataset("parquet", data_files={"test": test_files, "train": train_files})
+        elif len(test_files)>0 and len(train_files)==0:
+            ds = load_dataset("parquet", data_files={"test": test_files})
+            
+        logging.info(f"oveview of dataset: {ds}")
+        
         table_evaluations = []
-        ds = datasets.load_from_disk(ds_path)
+        #ds = datasets.load_from_disk(ds_path)
         ds = ds[split]
-        for i, data in enumerate(ds):
-            gt_doc_dict = data["GroundTruthDoclingDocument"]
+        for i, data in tqdm(enumerate(ds), desc="Table evaluations", ncols=120, total=len(ds)):
+            #gt_doc_dict = data["GroundTruthDoclingDocument"]
+            gt_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             gt_doc = DoclingDocument.model_validate_json(gt_doc_dict)
-            pred_doc_dict = data["PredictedDoclingDocument"]
+            #pred_doc_dict = data["PredictedDoclingDocument"]
+            pred_doc_dict = data[BenchMarkColumns.PREDICTION]
             pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
-            table_evaluations.extend(
-                self._evaluate_tables_in_documents(gt_doc, pred_doc)
-            )
+
+            results = self._evaluate_tables_in_documents(doc_id=data[BenchMarkColumns.DOC_ID],
+                                                         gt_doc=gt_doc,
+                                                         pred_doc=pred_doc)
+            
+            table_evaluations.extend(results)
 
         # Compute TED statistics for the entire dataset
         teds_simple = []
@@ -111,6 +146,7 @@ class TableEvaluator:
 
     def _evaluate_tables_in_documents(
         self,
+        doc_id: str,
         gt_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         structure_only: bool = False,
@@ -120,24 +156,31 @@ class TableEvaluator:
         gt_tables = gt_doc.tables
         pred_tables = pred_doc.tables
 
-        for table_id in range(min(len(gt_tables), len(pred_tables))):
-            gt_table = gt_tables[table_id]
-            is_complex = is_complex_table(gt_table)
-            gt_html = gt_table.export_to_html()
-            predicted_html = pred_tables[table_id].export_to_html()
+        assert len(gt_tables)==len(pred_tables), "len(gt_tables)!=len(pred_tables)"
+        
+        for table_id in range(len(gt_tables), len(pred_tables)):
 
-            # Filter out tags that may be present in GT but not in prediction to avoid penalty
-            for stopword in self._stopwords:
-                predicted_html = predicted_html.replace(stopword, "")
-            for stopword in self._stopwords:
-                gt_html = gt_html.replace(stopword, "")
+            try:
+                gt_table = gt_tables[table_id]
+                is_complex = is_complex_table(gt_table)
+                gt_html = gt_table.export_to_html()
+                predicted_html = pred_tables[table_id].export_to_html()
 
-            gt_html_obj = html.fromstring(gt_html)
-            predicted_html_obj = html.fromstring(predicted_html)
-            teds = self._teds_scorer(gt_html_obj, predicted_html_obj, structure_only)
-            teds = round(teds, 3)
-            table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex)
-            table_evaluations.append(table_evaluation)
+                # Filter out tags that may be present in GT but not in prediction to avoid penalty
+                for stopword in self._stopwords:
+                    predicted_html = predicted_html.replace(stopword, "")
+                for stopword in self._stopwords:
+                    gt_html = gt_html.replace(stopword, "")
+
+                gt_html_obj = html.fromstring(gt_html)
+                predicted_html_obj = html.fromstring(predicted_html)
+                teds = self._teds_scorer(gt_html_obj, predicted_html_obj, structure_only)
+                teds = round(teds, 3)
+                table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex)
+                table_evaluations.append(table_evaluation)
+            except Exception as exc:
+                logging.error(f"Table {table_id} from document {doc_id} could not be compared!")
+                
         return table_evaluations
 
     # def _dump_full_table_html(self, image_filename: str, full_table_html: str):

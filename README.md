@@ -15,17 +15,43 @@
 
 Evaluate [Docling](https://github.com/DS4SD/docling) on various datasets.
 
-
-
 ## Features
 
-Evaluate docling on various datasets.
+Evaluate docling on various datasets. You can use the cli
+
+```sh
+docling-eval % poetry run evaluate --help
+2024-12-20 10:51:57,593 - INFO - PyTorch version 2.5.1 available.
+
+ Usage: evaluate [OPTIONS]
+
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *  --task        -t      [create|evaluate]                                                                          Evaluation task [default: None] [required]                                                                              │
+│ *  --modality    -m      [end-to-end|layout|tableformer|codeformer]                                                 Evaluation modality [default: None] [required]                                                                          │
+│ *  --benchmark   -b      [DPBench|OmniDcoBench|WordScape|PubLayNet|DocLayNet|Pub1M|PubTabNet|FinTabNet|WikiTabNet]  Benchmark name [default: None] [required]                                                                               │
+│ *  --input-dir   -i      PATH                                                                                       Input directory [default: None] [required]                                                                              │
+│ *  --output-dir  -o      PATH                                                                                       Output directory [default: None] [required]                                                                             │
+│    --help                                                                                                           Show this message and exit.                                                                                             │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+If you have DP-Bench locally, you can create the dataset,
+
+```sh
+poetry run evaluate -t create -m end-to-end -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+```
+
+or,
+
+```sh
+poetry run evaluate -t create -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+```
+
 
 
 ## Contributing
 
 Please read [Contributing to Docling](https://github.com/DS4SD/docling/blob/main/CONTRIBUTING.md) for details.
-
 
 ## License
 

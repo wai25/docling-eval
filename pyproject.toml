@@ -24,8 +24,7 @@ packages = [{include = "docling_eval"}]
 ######################
 # actual dependencies:
 ######################
-python = "^3.9"
-# docling = "^2.12.0"
+python = "^3.10"
 docling-core = "^2.11.0"
 pydantic = "^2.0.0"
 lxml = "^5.3.0"
@@ -54,7 +53,7 @@ nbqa = "^1.9.0"
 types-openpyxl = "^3.1.5.20241114"
 
 [tool.poetry.scripts]
-docling_eval = "docling_eval.cli.main:app"
+evaluate = "docling_eval.cli.main:app"
 
 [build-system]
 requires = ["poetry-core"]
