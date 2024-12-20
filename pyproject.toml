@@ -32,6 +32,7 @@ lxml = "^5.3.0"
 datasets = "^3.2.0"
 apted = "^1.0.3"
 Distance = "^0.1.3"
+docling = "^2.14.0"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
@@ -79,11 +80,15 @@ python_version = "3.10"
 [[tool.mypy.overrides]]
 module = [
     "docling_core.*",
+    "docling_parse.*",
+    "docling_ibm_models.*",
+    "pypdfium2.*",    
     "lxml.*",
     "distance.*",
     "datasets.*",
     "apted.*",
-    "nltk.*"
+    "nltk.*",
+    "huggingface_hub.*"    
 ]
 ignore_missing_imports = true
 
