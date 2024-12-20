@@ -1,9 +1,7 @@
 import json
 from pathlib import Path
 
-from docling_eval.benchmarks.constants import BenchMarkNames
-
-from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.constants import BenchMarkColumns, BenchMarkNames
 
 
 def write_datasets_info(
@@ -37,5 +35,3 @@ def write_datasets_info(
 
     with open(output_dir / f"dataset_infos.json", "w") as fw:
         fw.write(json.dumps(dataset_infos, indent=2))
-
-

@@ -5,9 +5,9 @@ import logging
 import os
 from pathlib import Path
 from typing import Dict, List
-from tqdm import tqdm
 
 import pypdfium2 as pdfium
+from tqdm import tqdm  # type: ignore
 
 # Configure logging
 logging.basicConfig(
@@ -235,7 +235,9 @@ def update(doc: DoclingDocument, annots: Dict, page_width: float, page_height: f
         return
 
 
-def create_dpbench_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
+def create_dpbench_e2e_dataset(
+    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+):
 
     # Create Converter
     doc_converter = create_converter(
@@ -248,7 +250,12 @@ def create_dpbench_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale:
 
     records = []
 
-    for filename, annots in tqdm(gt.items(), desc="Processing files for DP-Bench with end-to-end", total=len(gt), ncols=128):
+    for filename, annots in tqdm(
+        gt.items(),
+        desc="Processing files for DP-Bench with end-to-end",
+        total=len(gt),
+        ncols=128,
+    ):
 
         pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
         # logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
@@ -287,7 +294,7 @@ def create_dpbench_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale:
 
     test_dir = output_dir / "test"
     os.makedirs(test_dir, exist_ok=True)
-    
+
     save_shard_to_disk(items=records, dataset_path=test_dir)
 
     write_datasets_info(
@@ -298,7 +305,9 @@ def create_dpbench_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale:
     )
 
 
-def create_dpbench_tableformer_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
+def create_dpbench_tableformer_dataset(
+    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+):
 
     tf_config = init_tf_model()
 
@@ -308,7 +317,12 @@ def create_dpbench_tableformer_dataset(dpbench_dir: Path, output_dir: Path, imag
 
     records = []
 
-    for filename, annots in tqdm(gt.items(), desc="Processing files for DP-Bench with TableFormer", total=len(gt), ncols=128):
+    for filename, annots in tqdm(
+        gt.items(),
+        desc="Processing files for DP-Bench with TableFormer",
+        total=len(gt),
+        ncols=128,
+    ):
 
         pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
         # logging.info(f"\n\n===============================\n\nfile: {pdf_path}\n\n")
@@ -453,7 +467,7 @@ def create_dpbench_tableformer_dataset(dpbench_dir: Path, output_dir: Path, imag
 
     test_dir = output_dir / "test"
     os.makedirs(test_dir, exist_ok=True)
-    
+
     save_shard_to_disk(items=records, dataset_path=test_dir)
 
     write_datasets_info(
