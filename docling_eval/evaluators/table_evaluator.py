@@ -156,9 +156,11 @@ class TableEvaluator:
         gt_tables = gt_doc.tables
         pred_tables = pred_doc.tables
 
+        logging.info(f"#-true-tables: {len(gt_tables)}, #-pred-tables: {len(pred_tables)}")
+        
         assert len(gt_tables)==len(pred_tables), "len(gt_tables)!=len(pred_tables)"
         
-        for table_id in range(len(gt_tables), len(pred_tables)):
+        for table_id in range(len(gt_tables)):#, len(pred_tables)):
 
             try:
                 gt_table = gt_tables[table_id]
@@ -175,6 +177,8 @@ class TableEvaluator:
                 gt_html_obj = html.fromstring(gt_html)
                 predicted_html_obj = html.fromstring(predicted_html)
                 teds = self._teds_scorer(gt_html_obj, predicted_html_obj, structure_only)
+                logging.info(f"teds: {teds}")
+                
                 teds = round(teds, 3)
                 table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex)
                 table_evaluations.append(table_evaluation)

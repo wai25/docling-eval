@@ -84,26 +84,7 @@ def evaluate(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, o
     save_fn = odir / f"evaluation_{benchmark}_{modality}.json"
     with open(save_fn, "w") as fd:
         json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
-        _log.info("The evaluation has been saved in '%s'", save_fn)
-        
-    """
-    ds_evaluation = None
-    if evaluation_task == EvaluationTask.TABLES:
-        table_evaluator = TableEvaluator()
-        ds_evaluation = table_evaluator(ds_path, split)
-    else:
-        _log.info("Unsupported evaluation task")
-
-    if ds_evaluation is None:
-        _log.error("No evaluation has been produced")
-        return
-
-    # Save the evaluation
-    save_fn = save_path / "evaluation.json"
-    with open(save_fn, "w") as fd:
-        json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
-        _log.info("The evaluation has been saved in '%s'", save_fn)
-    """
+    log.info("The evaluation has been saved in '%s'", save_fn)
 
 @app.command(no_args_is_help=True)
 def main(
