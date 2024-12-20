@@ -38,7 +38,7 @@ docling-eval % poetry run evaluate --help
 ## End to End examples
 
 <details>
-<summary>**Layout evaluation for DP-Bench**</summary>
+<summary><b>Layout evaluation for DP-Bench</b></summary>
 
 👉 Create the dataset,
 
@@ -67,7 +67,7 @@ poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbenc
 </details>
 
 <details>
-<summary>**Table evaluations for DP-Bench**</summary>
+<summary><b>Table evaluations for DP-Bench</b></summary>
 
 👉 Create the dataset,
 
