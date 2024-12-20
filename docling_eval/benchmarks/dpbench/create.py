@@ -30,6 +30,7 @@ from docling_parse.pdf_parsers import pdf_parser_v2
 from PIL import Image as PILImage
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.utils import write_datasets_info
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.models.tableformer.tf_model_prediction import (
     init_tf_model,
@@ -303,8 +304,13 @@ def create_e2e_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float =
 
     save_shard_to_disk(items=records, dataset_path=output_dir / "test")
 
-    write_datasets_info(name="DPBench: end-to-end", output_dir=output_dir,
-                        num_train_rows=0, num_test_rows=len(records))
+    write_datasets_info(
+        name="DPBench: end-to-end",
+        output_dir=output_dir,
+        num_train_rows=0,
+        num_test_rows=len(records),
+    )
+
 
 def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0):
 
@@ -462,10 +468,14 @@ def create_table_dataset(dpbench_dir: Path, output_dir: Path, image_scale: float
         records.append(record)
 
     save_shard_to_disk(items=records, dataset_path=output_dir)
-    
-    write_datasets_info(name="DPBench: tableformer", output_dir=output_dir,
-                        num_train_rows=0, num_test_rows=len(records))
-    
+
+    write_datasets_info(
+        name="DPBench: tableformer",
+        output_dir=output_dir,
+        num_train_rows=0,
+        num_test_rows=len(records),
+    )
+
 
 def parse_arguments():
     """Parse arguments for DP-Bench parsing."""
@@ -528,7 +538,7 @@ def main():
     for _ in ["test", "train"]:
         os.makedirs(odir_e2e / _, exist_ok=True)
         os.makedirs(odir_tab / _, exist_ok=True)
-    
+
     if mode == "end-2-end":
         create_e2e_dataset(
             dpbench_dir=dpbench_dir, output_dir=odir_e2e, image_scale=image_scale

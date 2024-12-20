@@ -16,13 +16,14 @@ class BenchMarkColumns(Enum):
 
     MIMETYPE = "mimetype"
 
-class BenchMarkNames(Enum):    
+
+class BenchMarkNames(Enum):
 
     # End-to-End
     DPBENCH = "DPBench"
     OMNIDOCBENCH = "OmniDcoBench"
     WORDSCAPE = "WordScape"
-    
+
     # Layout
     PUBLAYNET = "PubLayNet"
     DOCLAYNET = "DocLayNet"
