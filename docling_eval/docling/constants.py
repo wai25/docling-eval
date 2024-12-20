@@ -1,4 +1,3 @@
-
 DOCLING_VERSION = "docling_version"
 STATUS_COLUMN = "conversion_status"
 
@@ -7,7 +6,7 @@ DOCUMENT_COLUMN = "DoclingDocument"
 BINARY_DOCCOLUMN = "BinaryDocument"
 
 PICTURES_COLUMN = "pictures"
-PAGE_IMAGES_COLUMN= "page_images"
+PAGE_IMAGES_COLUMN = "page_images"
 
 HTML_DEFAULT_HEAD: str = r"""<head>
 <link rel="icon" type="image/png"

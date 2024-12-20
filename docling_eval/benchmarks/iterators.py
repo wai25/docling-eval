@@ -17,12 +17,11 @@ from docling_core.types.doc.document import (
     PageItem,
     PictureItem,
     TableItem,
-    ContentItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
 from PIL import Image as PILImage
 
-from docling_eval.docling.utils import crop_bounding_box, create_styled_html
+from docling_eval.docling.utils import create_styled_html, crop_bounding_box
 
 # Configure logging
 logging.basicConfig(
@@ -43,9 +42,9 @@ def _to_pil(item: Dict):
 
 
 def iterate_docitems_per_page(
-        dataset_path: Path,
-        column_name: str = "DoclingDocument",
-        labels: Set[DocItemLabel] = DEFAULT_EXPORT_LABELS,
+    dataset_path: Path,
+    column_name: str = "DoclingDocument",
+    labels: Set[DocItemLabel] = DEFAULT_EXPORT_LABELS,
 ) -> Generator[Tuple[int, PILImage.Image, List[DocItem], DoclingDocument], None, None]:
 
     logging.info(f"reading {dataset_path}")
@@ -86,9 +85,9 @@ def iterate_docitems_per_page(
 
 
 def iterate_docitems(
-        dataset_path: Path,
-        column_name: str = "DoclingDocument",
-        labels: Set[DocItemLabel] = DEFAULT_EXPORT_LABELS,
+    dataset_path: Path,
+    column_name: str = "DoclingDocument",
+    labels: Set[DocItemLabel] = DEFAULT_EXPORT_LABELS,
 ) -> Generator[
     Tuple[int, PILImage.Image, PILImage.Image, DocItem, DoclingDocument], None, None
 ]:
@@ -132,23 +131,24 @@ def iterate_docitems(
 
 
 def iterate_tables(
-        dataset_path: Path, column_name: str = "DoclingDocument"
+    dataset_path: Path, column_name: str = "DoclingDocument"
 ) -> Generator[
     Tuple[int, PILImage.Image, PILImage.Image, TableItem, DoclingDocument], None, None
 ]:
     for page_no, page_image, item_image, item, doc in iterate_docitems(
-            dataset_path, column_name=column_name, labels={DocItemLabel.TABLE}
+        dataset_path, column_name=column_name, labels={DocItemLabel.TABLE}
     ):
         if isinstance(item, TableItem):
             yield (page_no, page_image, item_image, item, doc)
-    
+
+
 def iterate_pictures(
-        dataset_path: Path, column_name: str = "DoclingDocument"
+    dataset_path: Path, column_name: str = "DoclingDocument"
 ) -> Generator[
     Tuple[int, PILImage.Image, PILImage.Image, PictureItem, DoclingDocument], None, None
 ]:
     for page_no, page_image, item_image, item, doc in iterate_docitems(
-            dataset_path, column_name=column_name, labels={DocItemLabel.PICTURE}
+        dataset_path, column_name=column_name, labels={DocItemLabel.PICTURE}
     ):
         if isinstance(item, PictureItem):
             yield (page_no, page_image, item_image, item, doc)
@@ -200,6 +200,7 @@ def parse_arguments():
         args.column_name,
     )
 
+
 def main():
 
     path_obj, odir, mode, column_name = parse_arguments()
@@ -238,7 +239,7 @@ def main():
         cnt = 0
         for ishard in ishards:
             for page_no, page_image, page_items, doc in iterate_page_objects(
-                    ishard, column_name=column_name
+                ishard, column_name=column_name
             ):
                 logging.info(f"page: {page_no} => #-objects: {len(page_items)}")
 
@@ -266,10 +267,10 @@ def main():
         cnt = 0
         for ishard in ishards:
             for page_no, page_image, table_image, table, doc in iterate_tables(
-                    ishard, column_name=column_name
+                ishard, column_name=column_name
             ):
                 table_image.show()
-                
+
                 page_dim = doc.pages[page_no]
 
                 table_html = table.export_to_html(doc)
@@ -297,7 +298,7 @@ def main():
         cnt = 0
         for ishard in ishards:
             for page_no, page_image, item_image, item, doc in iterate_docitems(
-                    ishard, column_name=column_name
+                ishard, column_name=column_name
             ):
                 page = doc.pages[page_no]
 

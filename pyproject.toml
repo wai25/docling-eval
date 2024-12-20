@@ -80,11 +80,15 @@ python_version = "3.10"
 [[tool.mypy.overrides]]
 module = [
     "docling_core.*",
+    "docling_parse.*",
+    "docling_ibm_models.*",
+    "pypdfium2.*",    
     "lxml.*",
     "distance.*",
     "datasets.*",
     "apted.*",
-    "nltk.*"
+    "nltk.*",
+    "huggingface_hub.*"    
 ]
 ignore_missing_imports = true
 

@@ -1,35 +1,44 @@
 import base64
+import io
 import logging
+from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd  # import-untyped
 from datasets import Dataset, DatasetInfo, Features, concatenate_datasets
-from docling_core.types.doc.document import DoclingDocument
-from PIL import Image as PILImage
-
-from importlib.metadata import version, PackageNotFoundError
-from docling_eval.docling.constants import HTML_DEFAULT_HEAD
-
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
+    ImageRef,
+    PageItem,
     ProvenanceItem,
     TableCell,
     TableData,
-    ImageRef,
-    PageItem,
     TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from PIL import Image as PILImage
+from pydantic import AnyUrl
+
+from docling_eval.docling.constants import HTML_DEFAULT_HEAD
+
 
 def docling_version() -> str:
-    return version("docling") # may raise PackageNotFoundError
+    return version("docling")  # may raise PackageNotFoundError
 
-def create_styled_html(body:str) -> str:
-    
-    html_lines = ["<!DOCTYPE html>", "<html>", HTML_DEFAULT_HEAD, "<body>", body, "</body></html>"]
+
+def create_styled_html(body: str) -> str:
+
+    html_lines = [
+        "<!DOCTYPE html>",
+        "<html>",
+        HTML_DEFAULT_HEAD,
+        "<body>",
+        body,
+        "</body></html>",
+    ]
     return "".join(html_lines)
 
 
@@ -47,6 +56,25 @@ def map_to_records(item: Dict):
     # Create a DataFrame
     df = pd.DataFrame(data, columns=header)
     return df.to_dict(orient="records")
+
+
+def to_base64(item: Dict[str, Any]) -> str:
+    image_bytes = item["bytes"]
+
+    # Wrap the bytes in a BytesIO object
+    image_stream = BytesIO(image_bytes)
+
+    # Open the image using PIL
+    image = PILImage.open(image_stream)
+
+    # Convert the image to a bytes object
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")  # Specify the format (e.g., JPEG, PNG, etc.)
+    image_bytes = buffered.getvalue()
+
+    # Encode the bytes to a Base64 string
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    return image_base64
 
 
 def to_pil(uri):
@@ -86,28 +114,27 @@ def extract_images(
 
     return document, pictures, page_images
 
+
 def insert_images(
     document: DoclingDocument,
-    pictures: List[PILImage],
-    page_images: List[PILImage]
+    pictures: List[Dict[str, Any]],
+    page_images: List[Dict[str, Any]],
 ):
 
-    pictures = []
-    page_images = []
-
     # Save page images
-    for img_no, picture in enumerate(document.pictures):
+    for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-            pictures.append(to_pil(picture.image.uri))
-            picture.image.uri = Path(f"{pictures_column}/{img_no}")
+            b64 = to_base64(pictures[pic_no])
+            picture.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
 
     # Save page images
     for page_no, page in document.pages.items():
         if page.image is not None:
-            page_images.append(to_pil(page.image.uri))
-            page.image.uri = Path(f"{page_images_column}/{page_no}")
+            b64 = to_base64(page_images[page_no])
+            page.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
 
-    return document.export_to_dict(), pictures, page_images
+    return document
+
 
 def save_shard_to_disk(
     items: List[Any],
@@ -172,6 +199,7 @@ def generate_dataset_info(
     )
     dataset_info.save_to_disk(str(output_dir))
 
+
 def crop_bounding_box(page_image: PILImage.Image, page: PageItem, bbox: BoundingBox):
     """
     Crop a bounding box from a PIL image.
@@ -219,4 +247,3 @@ def crop_bounding_box(page_image: PILImage.Image, page: PageItem, bbox: Bounding
     cropped_image = page_image.crop((pil_l, pil_b, pil_r, pil_t))
 
     return cropped_image
-    

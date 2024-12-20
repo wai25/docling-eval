@@ -1,4 +1,3 @@
-
 # The config is missing the keys: "model.save_dir"
 tf_config = {
     "dataset": {
@@ -60,7 +59,7 @@ tf_config = {
         "padding": False,
         "padding_size": 50,
         "disable_post_process": False,
-        "profiling": True
+        "profiling": True,
     },
     "dataset_wordmap": {
         "word_map_tag": {

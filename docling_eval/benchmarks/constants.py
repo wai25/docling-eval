@@ -1,7 +1,17 @@
+from enum import Enum
+
 
 class BenchMarkColumns(Enum):
-    VERSION = "docling_version"
+    DOCLING_VERSION = "docling_version"
 
-    GROUNDTRUTH_DOC = "GroundTruthDocument"
-    PREDICTED_DOC = "PredictedDocument"
-    BINARY_DOC = "BinaryDocument"
+    STATUS = "status"
+    DOC_ID = "document_id"
+
+    GROUNDTRUTH = "GroundTruthDocument"
+    PREDICTION = "PredictedDocument"
+    ORIGINAL = "BinaryDocument"
+
+    PAGE_IMAGES = "page_images"
+    PICTURES = "pictures"
+
+    MIMETYPE = "mimetype"
