@@ -11,6 +11,7 @@ from docling_eval.benchmarks.constants import BenchMarkNames
 
 from docling_eval.benchmarks.dpbench.create import create_dpbench_e2e_dataset, create_dpbench_tableformer_dataset
 
+from docling_eval.evaluators.layout_evaluator import LayoutEvaluator, DatasetLayoutEvaluation
 from docling_eval.evaluators.table_evaluator import TableEvaluator, DatasetTableEvaluation
 
 import matplotlib.pyplot as plt
@@ -52,11 +53,14 @@ def create(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, odi
         
     match benchmark:
         case BenchMarkNames.DPBENCH:
+
             if(modality==EvaluationModality.END2END or
                modality==EvaluationModality.LAYOUT):
                 create_dpbench_e2e_dataset(dpbench_dir=idir, output_dir=odir, image_scale=image_scale)
+
             elif(modality==EvaluationModality.TABLEFORMER):
                 create_dpbench_tableformer_dataset(dpbench_dir=idir, output_dir=odir, image_scale=image_scale)
+
             else:
                 log.error(f"{modality} is not yet implemented for {benchmark}")
 
@@ -74,7 +78,8 @@ def evaluate(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, o
             pass
         
         case EvaluationModality.LAYOUT:
-            pass
+            layout_evaluator = LayoutEvaluator()
+            ds_evaluation = layout_evaluator(idir, split="test")
 
         case EvaluationModality.TABLEFORMER:
             table_evaluator = TableEvaluator()
