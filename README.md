@@ -26,7 +26,7 @@ docling-eval % poetry run evaluate --help
  Usage: evaluate [OPTIONS]
 
 ╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ *  --task        -t      [create|evaluate]                                                                          Evaluation task [default: None] [required]                                                                              │
+│ *  --task        -t      [create|evaluate|visualize]                                                                Evaluation task [default: None] [required]                                                                              │
 │ *  --modality    -m      [end-to-end|layout|tableformer|codeformer]                                                 Evaluation modality [default: None] [required]                                                                          │
 │ *  --benchmark   -b      [DPBench|OmniDcoBench|WordScape|PubLayNet|DocLayNet|Pub1M|PubTabNet|FinTabNet|WikiTabNet]  Benchmark name [default: None] [required]                                                                               │
 │ *  --input-dir   -i      PATH                                                                                       Input directory [default: None] [required]                                                                              │
@@ -35,18 +35,31 @@ docling-eval % poetry run evaluate --help
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-If you have DP-Bench locally, you can create the dataset,
+## End to End examples
 
-```sh
-poetry run evaluate -t create -m end-to-end -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
-```
+### Table evaluations for DP-Bench
 
-or,
+👉 Create the dataset,
 
 ```sh
 poetry run evaluate -t create -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
 ```
 
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+```
+
+👉 Visualise the dataset,
+
+```sh
+poetry run evaluate -t visualize -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+```
+
+The final result can be visualised as,
+
+[DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.pdf)
 
 
 ## Contributing

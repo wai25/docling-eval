@@ -107,18 +107,22 @@ def visualise(modality:EvaluationModality, benchmark:BenchMarkNames, idir:Path, 
 
             # Calculate bin widths
             bin_widths = [evaluation.TEDS.bins[i + 1] - evaluation.TEDS.bins[i] for i in range(len(evaluation.TEDS.bins) - 1)]
-
+            bin_middle = [(evaluation.TEDS.bins[i + 1] + evaluation.TEDS.bins[i])/2.0 for i in range(len(evaluation.TEDS.bins) - 1)]
+            
             for i in range(len(evaluation.TEDS.bins)-1):
                 logging.info(f"{i:02} [{evaluation.TEDS.bins[i]:.3f}, {evaluation.TEDS.bins[i+1]:.3f}]: {evaluation.TEDS.hist[i]}")
                 
             # Plot histogram
-            plt.bar(evaluation.TEDS.bins[0:-1], evaluation.TEDS.hist, width=bin_widths, edgecolor="black")
+            plt.bar(bin_middle, evaluation.TEDS.hist, width=bin_widths, edgecolor="black")
             #width=(evaluation.TEDS.bins[1] - evaluation.TEDS.bins[0]),
                     
             plt.xlabel("TEDS")
             plt.ylabel("Frequency")
             plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
-            plt.show()
+
+            figname = odir / f"evaluation_{benchmark.value}_{modality.value}.pdf"
+            logging.info(f"saving figure to {figname}")
+            plt.savefig(figname)
 
         case EvaluationModality.CODEFORMER:
             pass
