@@ -64,16 +64,6 @@ poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbenc
 |  8 |        formula |         0.066 |
 |  9 |          table |         0.891 |
 
-👉 Visualise the dataset,
-
-```sh
-poetry run evaluate -t visualize -m tableformer -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
-```
-
-The final result can be visualised as,
-
-
-
 ### Table evaluations for DP-Bench
 
 👉 Create the dataset,
@@ -85,13 +75,13 @@ poetry run evaluate -t create -m tableformer -b DPBench -i <location-of-dpbench>
 👉 Evaluate the dataset,
 
 ```sh
-poetry run evaluate -t evaluate -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbench-tableformer -o ./benchmarks/dpbench-tableformer
 ```
 
 👉 Visualise the dataset,
 
 ```sh
-poetry run evaluate -t visualize -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+poetry run evaluate -t visualize -m tableformer -b DPBench -i ./benchmarks/dpbench-tableformer -o ./benchmarks/dpbench-tableformer
 ```
 
 The final result can be visualised as,
