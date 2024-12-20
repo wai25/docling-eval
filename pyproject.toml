@@ -53,8 +53,8 @@ ipywidgets = "^8.1.5"
 nbqa = "^1.9.0"
 types-openpyxl = "^3.1.5.20241114"
 
-# [tool.poetry.scripts]
-# docling = "docling.cli.main:app"
+[tool.poetry.scripts]
+docling_eval = "docling_eval.cli.main:app"
 
 [build-system]
 requires = ["poetry-core"]
