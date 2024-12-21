@@ -11,7 +11,7 @@ import numpy as np
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, TableItem
 from lxml import html
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, ValidationError
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
@@ -26,7 +26,12 @@ class TableEvaluation(BaseModel):
     TEDS: float
     is_complex: bool = False
 
+    true_ncols:int = -1
+    pred_ncols:int = -1 
 
+    true_nrows:int = -1
+    pred_nrows:int = -1 
+    
 class DatasetStatistics(BaseModel):
     total: int
 
@@ -34,53 +39,15 @@ class DatasetStatistics(BaseModel):
     median: float
     std: float
 
-    bins: Tuple[
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ]
+    bins: List[float]
+    hist: List[float]
 
-    hist: Tuple[
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ]
-
+    @model_validator(mode="after")
+    def check_bins_and_hist_lengths(cls, values):
+        if len(values.bins) != len(values.hist) + 1:
+            raise ValueError("`bins` must have exactly one more element than `hist`.")
+        return values
+    
 
 class DatasetTableEvaluation(BaseModel):
     evaluations: list[TableEvaluation]
@@ -219,26 +186,34 @@ class TableEvaluator:
 
             try:
                 true_table = true_tables[table_id]
+                pred_table = pred_tables[table_id]
+
                 is_complex = is_complex_table(true_table)
+
                 true_html = true_table.export_to_html()
-                predicted_html = pred_tables[table_id].export_to_html()
+                pred_html = pred_table.export_to_html()
 
                 # Filter out tags that may be present in GT but not in prediction to avoid penalty
                 for stopword in self._stopwords:
-                    predicted_html = predicted_html.replace(stopword, "")
+                    predicted_html = pred_html.replace(stopword, "")
                 for stopword in self._stopwords:
                     true_html = true_html.replace(stopword, "")
 
                 true_html_obj = html.fromstring(true_html)
-                predicted_html_obj = html.fromstring(predicted_html)
+                pred_html_obj = html.fromstring(pred_html)
+                
                 teds = self._teds_scorer(
-                    true_html_obj, predicted_html_obj, structure_only
+                    true_html_obj, pred_html_obj, structure_only
                 )
                 # logging.info(f"teds: {teds}")
 
                 teds = round(teds, 3)
                 table_evaluation = TableEvaluation(
-                    TEDS=teds, is_complex=is_complex, filename=doc_id, table_id=table_id
+                    TEDS=teds, is_complex=is_complex, filename=doc_id, table_id=table_id,
+                    true_ncols = true_table.data.num_cols,
+                    pred_ncols = pred_table.data.num_cols,
+                    true_nrows = true_table.data.num_rows,
+                    pred_nrows = pred_table.data.num_rows, 
                 )
                 table_evaluations.append(table_evaluation)
             except Exception as exc:
@@ -247,13 +222,3 @@ class TableEvaluator:
                 )
 
         return table_evaluations
-
-    # def _dump_full_table_html(self, image_filename: str, full_table_html: str):
-    #     r"""
-    #     Save the full_table_html as a file
-    #     """
-    #     Path(self._viz_dir).mkdir(parents=True, exist_ok=True)
-    #     html_filename = "{}.html".format(Path(image_filename).stem)
-    #     html_fn = os.path.join(self._viz_dir, html_filename)
-    #     with open(html_fn, "w") as fd:
-    #         fd.write(full_table_html)
