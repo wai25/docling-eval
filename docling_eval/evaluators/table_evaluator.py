@@ -11,7 +11,7 @@ import numpy as np
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, TableItem
 from lxml import html
-from pydantic import BaseModel, model_validator, ValidationError
+from pydantic import BaseModel, ValidationError, model_validator
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
@@ -26,12 +26,13 @@ class TableEvaluation(BaseModel):
     TEDS: float
     is_complex: bool = False
 
-    true_ncols:int = -1
-    pred_ncols:int = -1 
+    true_ncols: int = -1
+    pred_ncols: int = -1
 
-    true_nrows:int = -1
-    pred_nrows:int = -1 
-    
+    true_nrows: int = -1
+    pred_nrows: int = -1
+
+
 class DatasetStatistics(BaseModel):
     total: int
 
@@ -47,7 +48,7 @@ class DatasetStatistics(BaseModel):
         if len(values.bins) != len(values.hist) + 1:
             raise ValueError("`bins` must have exactly one more element than `hist`.")
         return values
-    
+
 
 class DatasetTableEvaluation(BaseModel):
     evaluations: list[TableEvaluation]
@@ -142,7 +143,7 @@ class TableEvaluator:
             pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
 
             results = self._evaluate_tables_in_documents(
-                doc_id=data[BenchMarkColumns.DOC_ID], gt_doc=gt_doc, pred_doc=pred_doc
+                doc_id=data[BenchMarkColumns.DOC_ID], true_doc=gt_doc, pred_doc=pred_doc
             )
 
             table_evaluations.extend(results)
@@ -180,7 +181,9 @@ class TableEvaluator:
         pred_tables = pred_doc.tables
 
         # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
-        assert len(true_tables) == len(pred_tables), "len(true_tables)!=len(pred_tables)"
+        assert len(true_tables) == len(
+            pred_tables
+        ), "len(true_tables)!=len(pred_tables)"
 
         for table_id in range(len(true_tables)):  # , len(pred_tables)):
 
@@ -201,19 +204,20 @@ class TableEvaluator:
 
                 true_html_obj = html.fromstring(true_html)
                 pred_html_obj = html.fromstring(pred_html)
-                
-                teds = self._teds_scorer(
-                    true_html_obj, pred_html_obj, structure_only
-                )
+
+                teds = self._teds_scorer(true_html_obj, pred_html_obj, structure_only)
                 # logging.info(f"teds: {teds}")
 
                 teds = round(teds, 3)
                 table_evaluation = TableEvaluation(
-                    TEDS=teds, is_complex=is_complex, filename=doc_id, table_id=table_id,
-                    true_ncols = true_table.data.num_cols,
-                    pred_ncols = pred_table.data.num_cols,
-                    true_nrows = true_table.data.num_rows,
-                    pred_nrows = pred_table.data.num_rows, 
+                    TEDS=teds,
+                    is_complex=is_complex,
+                    filename=doc_id,
+                    table_id=table_id,
+                    true_ncols=true_table.data.num_cols,
+                    pred_ncols=pred_table.data.num_cols,
+                    true_nrows=true_table.data.num_rows,
+                    pred_nrows=pred_table.data.num_rows,
                 )
                 table_evaluations.append(table_evaluation)
             except Exception as exc:
