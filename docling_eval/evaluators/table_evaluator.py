@@ -203,36 +203,36 @@ class TableEvaluator:
     def _evaluate_tables_in_documents(
         self,
         doc_id: str,
-        gt_doc: DoclingDocument,
+        true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         structure_only: bool = False,
     ) -> list[TableEvaluation]:
         r""" """
         table_evaluations = []
-        gt_tables = gt_doc.tables
+        true_tables = true_doc.tables
         pred_tables = pred_doc.tables
 
-        # logging.info(f"#-true-tables: {len(gt_tables)}, #-pred-tables: {len(pred_tables)}")
-        assert len(gt_tables) == len(pred_tables), "len(gt_tables)!=len(pred_tables)"
+        # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
+        assert len(true_tables) == len(pred_tables), "len(true_tables)!=len(pred_tables)"
 
-        for table_id in range(len(gt_tables)):  # , len(pred_tables)):
+        for table_id in range(len(true_tables)):  # , len(pred_tables)):
 
             try:
-                gt_table = gt_tables[table_id]
-                is_complex = is_complex_table(gt_table)
-                gt_html = gt_table.export_to_html()
+                true_table = true_tables[table_id]
+                is_complex = is_complex_table(true_table)
+                true_html = true_table.export_to_html()
                 predicted_html = pred_tables[table_id].export_to_html()
 
                 # Filter out tags that may be present in GT but not in prediction to avoid penalty
                 for stopword in self._stopwords:
                     predicted_html = predicted_html.replace(stopword, "")
                 for stopword in self._stopwords:
-                    gt_html = gt_html.replace(stopword, "")
+                    true_html = true_html.replace(stopword, "")
 
-                gt_html_obj = html.fromstring(gt_html)
+                true_html_obj = html.fromstring(true_html)
                 predicted_html_obj = html.fromstring(predicted_html)
                 teds = self._teds_scorer(
-                    gt_html_obj, predicted_html_obj, structure_only
+                    true_html_obj, predicted_html_obj, structure_only
                 )
                 # logging.info(f"teds: {teds}")
 

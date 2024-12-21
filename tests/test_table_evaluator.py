@@ -283,7 +283,7 @@ def test_table_evaluator():
 
     # Evaluate equal tables
     evaluations: list[TableEvaluation] = table_evaluator._evaluate_tables_in_documents(
-        doc, doc
+        doc_id="test", true_doc=doc, pred_doc=doc
     )
     assert len(evaluations) == 1
     evaluation = evaluations[0]
