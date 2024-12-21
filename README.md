@@ -50,7 +50,7 @@ poetry run evaluate -t create -m layout -b DPBench -i <location-of-dpbench> -o .
 👉 Evaluate the dataset,
 
 ```sh
-poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+poetry run evaluate -t evaluate -m layout -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
 ```
 
 | id |          label | MaP[0.5:0.95] |
