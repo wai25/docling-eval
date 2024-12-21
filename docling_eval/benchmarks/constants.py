@@ -17,6 +17,13 @@ class BenchMarkColumns(str, Enum):
     MIMETYPE = "mimetype"
 
 
+class EvaluationModality(str, Enum):
+    END2END = "end-to-end"
+    LAYOUT = "layout"
+    TABLEFORMER = "tableformer"
+    CODEFORMER = "codeformer"
+
+
 class BenchMarkNames(str, Enum):
 
     # End-to-End

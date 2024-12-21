@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import datasets
+import matplotlib.pyplot as plt
 import numpy as np
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, TableItem
@@ -48,6 +49,54 @@ class DatasetStatistics(BaseModel):
         if len(values.bins) != len(values.hist) + 1:
             raise ValueError("`bins` must have exactly one more element than `hist`.")
         return values
+
+    def to_table(self) -> List[List[str]]:
+        # Calculate bin widths
+        bin_widths = [
+            self.bins[i + 1] - self.bins[i] for i in range(len(self.bins) - 1)
+        ]
+        bin_middle = [
+            (self.bins[i + 1] + self.bins[i]) / 2.0 for i in range(len(self.bins) - 1)
+        ]
+
+        table = []
+        for i in range(len(self.bins) - 1):
+            table.append(
+                [
+                    f"{self.bins[i+0]:.3f}",
+                    f"{self.bins[i+1]:.3f}",
+                    f"{float(self.hist[i])/float(self.total):.3f}",
+                    f"{self.hist[i]}",
+                ]
+            )
+
+        return table
+
+    def save_histogram(self, figname: Path):
+        # Calculate bin widths
+        bin_widths = [
+            self.bins[i + 1] - self.bins[i] for i in range(len(self.bins) - 1)
+        ]
+        bin_middle = [
+            (self.bins[i + 1] + self.bins[i]) / 2.0 for i in range(len(self.bins) - 1)
+        ]
+
+        for i in range(len(self.bins) - 1):
+            logging.info(
+                f"{i:02} [{self.bins[i]:.3f}, {self.bins[i+1]:.3f}]: {self.hist[i]}"
+            )
+
+        # Plot histogram
+        plt.bar(bin_middle, self.hist, width=bin_widths, edgecolor="black")
+        # width=(evaluation.TEDS.bins[1] - evaluation.TEDS.bins[0]),
+
+        plt.xlabel("TEDS")
+        plt.ylabel("Frequency")
+        # plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
+
+        # figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        logging.info(f"saving figure to {figname}")
+        plt.savefig(figname)
 
 
 class DatasetTableEvaluation(BaseModel):

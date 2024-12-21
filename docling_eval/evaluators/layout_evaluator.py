@@ -33,6 +33,13 @@ class DatasetLayoutEvaluation(BaseModel):
 
     evaluations: List[LayoutEvaluation]
 
+    def to_table(self) -> List[List[str]]:
+        table = []
+        for _ in self.evaluations:
+            table.append([_.name, "" if _.label is None else _.label, f"{_.value:.3f}"])
+
+        return table
+
 
 class LayoutEvaluator:
 
@@ -124,6 +131,7 @@ class LayoutEvaluator:
                     )
                 )
 
+        """
         # Print results
         print("Results:")
         for key, value in result.items():
@@ -142,6 +150,7 @@ class LayoutEvaluator:
                 print(
                     f" => {label_idx} {intersection_labels[label_idx].value}: {class_map:.3f}"
                 )
+        """
 
         return DatasetLayoutEvaluation(
             evaluations=evaluations,

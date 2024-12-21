@@ -37,6 +37,14 @@ docling-eval % poetry run evaluate --help
 
 ## End to End examples
 
+### DP-Bench
+
+Using a single command,
+
+```sh
+poetry run python ./docs/examples/benchmark_dpbench.py
+```
+
 <details>
 <summary><b>Layout evaluation for DP-Bench</b></summary>
 <br>

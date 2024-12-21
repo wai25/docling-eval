@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 import matplotlib.pyplot as plt
 import typer
 
-from docling_eval.benchmarks.constants import BenchMarkNames
+from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
 from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_e2e_dataset,
     create_dpbench_tableformer_dataset,
@@ -40,13 +40,6 @@ class EvaluationTask(str, Enum):
     CREATE = "create"
     EVALUATE = "evaluate"
     VISUALIZE = "visualize"
-
-
-class EvaluationModality(str, Enum):
-    END2END = "end-to-end"
-    LAYOUT = "layout"
-    TABLEFORMER = "tableformer"
-    CODEFORMER = "codeformer"
 
 
 def create(

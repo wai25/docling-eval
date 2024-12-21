@@ -185,7 +185,8 @@ def update(doc: DoclingDocument, annots: Dict, page_width: float, page_height: f
         )
 
     elif label == "List":
-        doc.add_list_item(text=text, orig=text)
+        # doc.add_list_item(text=text, orig=text, prov=prov)
+        doc.add_text(label=DocItemLabel.TEXT, text=text, orig=text, prov=prov)
 
     elif label == "Caption":
         doc.add_text(label=DocItemLabel.CAPTION, text=text, orig=text, prov=prov)
@@ -274,7 +275,7 @@ def create_dpbench_e2e_dataset(
         page_width = pred_doc.pages[1].size.width
         page_height = pred_doc.pages[1].size.height
 
-        logging.info(f"w={page_width}, h={page_height}")
+        # logging.info(f"w={page_width}, h={page_height}")
 
         for elem in annots["elements"]:
             update(true_doc, elem, page_width=page_width, page_height=page_height)
@@ -302,6 +303,14 @@ def create_dpbench_e2e_dataset(
         output_dir=output_dir,
         num_train_rows=0,
         num_test_rows=len(records),
+    )
+
+
+def create_dpbench_layout_dataset(
+    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+):
+    create_dpbench_e2e_dataset(
+        dpbench_dir=dpbench_dir, output_dir=output_dir, image_scale=image_scale
     )
 
 
