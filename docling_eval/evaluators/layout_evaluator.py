@@ -159,7 +159,18 @@ class LayoutEvaluator:
             intersecting_labels=[_.value for _ in intersection_labels],
         )
 
-    def _find_intersecting_labels(self, ds: Dataset):
+    def _find_intersecting_labels(
+        self, ds: Dataset
+    ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel]]:
+        r"""
+        Compute counters per labels for the groundtruth, prediciton and their intersections
+
+        Returns
+        -------
+        true_labels: dict[label -> counter]
+        pred_labels: dict[label -> counter]
+        intersection_labels: list[DocItemLabel]
+        """
 
         true_labels: Dict[str, int] = {}
         pred_labels: Dict[str, int] = {}
@@ -197,10 +208,10 @@ class LayoutEvaluator:
         for label, count in pred_labels.items():
             logging.info(f" => {label}: {count}")
 
-        intersection_labels: List[str] = []
+        intersection_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
             if label in pred_labels:
-                intersection_labels.append(label)
+                intersection_labels.append(DocItemLabel(label))
 
         return true_labels, pred_labels, intersection_labels
 
@@ -210,13 +221,20 @@ class LayoutEvaluator:
         true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         filter_labels: List[DocItemLabel],
-    ):
+    ) -> tuple[list[dict[str, torch.Tensor]], list[dict[str, torch.Tensor]]]:
+        r"""
+        Returns
+        -------
+        ground_truths: List of dict with keys "bboxes", "labels" and values are tensors
+        predictions: List of dict with keys "bboxes", "labels", "scores" and values are tensors
+        """
 
         # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
         assert len(true_doc.pages) == len(
             pred_doc.pages
         ), "len(true_doc.pages)==len(pred_doc.pages)"
 
+        # page_num -> List[DocItem]
         true_pages_to_objects: Dict[int, List[DocItem]] = {}
         pred_pages_to_objects: Dict[int, List[DocItem]] = {}
 
