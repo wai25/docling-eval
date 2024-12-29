@@ -15,17 +15,96 @@
 
 Evaluate [Docling](https://github.com/DS4SD/docling) on various datasets.
 
-
-
 ## Features
 
-Evaluate docling on various datasets.
+Evaluate docling on various datasets. You can use the cli
 
+```sh
+docling-eval % poetry run evaluate --help
+2024-12-20 10:51:57,593 - INFO - PyTorch version 2.5.1 available.
+
+ Usage: evaluate [OPTIONS]
+
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *  --task        -t      [create|evaluate|visualize]                                                                Evaluation task [default: None] [required]                                                                              │
+│ *  --modality    -m      [end-to-end|layout|tableformer|codeformer]                                                 Evaluation modality [default: None] [required]                                                                          │
+│ *  --benchmark   -b      [DPBench|OmniDcoBench|WordScape|PubLayNet|DocLayNet|Pub1M|PubTabNet|FinTabNet|WikiTabNet]  Benchmark name [default: None] [required]                                                                               │
+│ *  --input-dir   -i      PATH                                                                                       Input directory [default: None] [required]                                                                              │
+│ *  --output-dir  -o      PATH                                                                                       Output directory [default: None] [required]                                                                             │
+│    --help                                                                                                           Show this message and exit.                                                                                             │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+## End to End examples
+
+### DP-Bench
+
+Using a single command,
+
+```sh
+poetry run python ./docs/examples/benchmark_dpbench.py
+```
+
+<details>
+<summary><b>Layout evaluation for DP-Bench</b></summary>
+<br>
+
+👉 Create the dataset,
+
+```sh
+poetry run evaluate -t create -m layout -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-layout
+```
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m layout -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+| id |          label | MaP[0.5:0.95] |
+| -- | -------------- | ------------- |
+|  0 |    page_header |         0.151 |
+|  1 |           text |         0.678 |
+|  2 | section_header |         0.443 |
+|  3 |       footnote |         0.221 |
+|  4 |        picture |         0.761 |
+|  5 |        caption |         0.458 |
+|  6 |    page_footer |         0.344 |
+|  7 | document_index |         0.755 |
+|  8 |        formula |         0.066 |
+|  9 |          table |         0.891 |
+</details>
+
+<details>
+<summary><b>Table evaluations for DP-Bench</b></summary>
+<br>
+
+👉 Create the dataset,
+
+```sh
+poetry run evaluate -t create -m tableformer -b DPBench -i <location-of-dpbench> -o ./benchmarks/dpbench-tableformer
+```
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m tableformer -b DPBench -i ./benchmarks/dpbench-tableformer -o ./benchmarks/dpbench-tableformer
+```
+
+👉 Visualise the dataset,
+
+```sh
+poetry run evaluate -t visualize -m tableformer -b DPBench -i ./benchmarks/dpbench-tableformer -o ./benchmarks/dpbench-tableformer
+```
+
+The final result can be visualised as,
+
+![DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.png)
+</details>
 
 ## Contributing
 
 Please read [Contributing to Docling](https://github.com/DS4SD/docling/blob/main/CONTRIBUTING.md) for details.
-
 
 ## License
 

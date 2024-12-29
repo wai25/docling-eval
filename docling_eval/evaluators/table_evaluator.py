@@ -1,38 +1,127 @@
-#
-# Copyright IBM Corp. 2024 - 2024
-# SPDX-License-Identifier: MIT
-#
+import glob
 import logging
 import os
 import statistics
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import datasets
+import matplotlib.pyplot as plt
+import numpy as np
+from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, TableItem
 from lxml import html
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, model_validator
+from tqdm import tqdm  # type: ignore
 
+from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.utils.teds import TEDScorer
 
 _log = logging.getLogger(__name__)
 
 
 class TableEvaluation(BaseModel):
-    # filename: str
+    filename: str = "<unknown>"
+    table_id: int = -1
     TEDS: float
     is_complex: bool = False
+
+    true_ncols: int = -1
+    pred_ncols: int = -1
+
+    true_nrows: int = -1
+    pred_nrows: int = -1
+
+
+class DatasetStatistics(BaseModel):
+    total: int
+
+    mean: float
+    median: float
+    std: float
+
+    bins: List[float]
+    hist: List[float]
+
+    @model_validator(mode="after")
+    def check_bins_and_hist_lengths(cls, values):
+        if len(values.bins) != len(values.hist) + 1:
+            raise ValueError("`bins` must have exactly one more element than `hist`.")
+        return values
+
+    def to_table(self) -> List[List[str]]:
+        # Calculate bin widths
+        bin_widths = [
+            self.bins[i + 1] - self.bins[i] for i in range(len(self.bins) - 1)
+        ]
+        bin_middle = [
+            (self.bins[i + 1] + self.bins[i]) / 2.0 for i in range(len(self.bins) - 1)
+        ]
+
+        table = []
+        for i in range(len(self.bins) - 1):
+            table.append(
+                [
+                    f"{self.bins[i+0]:.3f}",
+                    f"{self.bins[i+1]:.3f}",
+                    f"{float(self.hist[i])/float(self.total):.3f}",
+                    f"{self.hist[i]}",
+                ]
+            )
+
+        return table
+
+    def save_histogram(self, figname: Path):
+        # Calculate bin widths
+        bin_widths = [
+            self.bins[i + 1] - self.bins[i] for i in range(len(self.bins) - 1)
+        ]
+        bin_middle = [
+            (self.bins[i + 1] + self.bins[i]) / 2.0 for i in range(len(self.bins) - 1)
+        ]
+
+        for i in range(len(self.bins) - 1):
+            logging.info(
+                f"{i:02} [{self.bins[i]:.3f}, {self.bins[i+1]:.3f}]: {self.hist[i]}"
+            )
+
+        # Plot histogram
+        plt.bar(bin_middle, self.hist, width=bin_widths, edgecolor="black")
+        # width=(evaluation.TEDS.bins[1] - evaluation.TEDS.bins[0]),
+
+        plt.xlabel("TEDS")
+        plt.ylabel("Frequency")
+        # plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
+
+        # figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        logging.info(f"saving figure to {figname}")
+        plt.savefig(figname)
 
 
 class DatasetTableEvaluation(BaseModel):
     evaluations: list[TableEvaluation]
-    total_mean_TEDS: float = 0.0
-    simple_mean_TEDS: float = 0.0
-    complex_mean_TEDS: float = 0.0
-    total_std_TEDS: Optional[float] = None
-    simple_std_TEDS: Optional[float] = None
-    complex_std_TEDS: Optional[float] = None
+
+    TEDS: DatasetStatistics
+    TEDS_simple: DatasetStatistics
+    TEDS_complex: DatasetStatistics
+
+
+def compute_stats(values: List[float]) -> DatasetStatistics:
+    total: int = len(values)
+
+    mean: float = statistics.mean(values) if len(values) > 0 else -1
+    median: float = statistics.median(values) if len(values) > 0 else -1
+    std: float = statistics.stdev(values) if len(values) > 0 else -1
+    logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
+
+    # Compute the histogram with 20 bins between 0 and 1
+    hist, bins = np.histogram(values, bins=20, range=(0, 1))
+    logging.info(f"#-hist: {len(hist)}, #-bins: {len(bins)}")
+
+    return DatasetStatistics(
+        total=total, mean=mean, median=median, std=std, hist=hist, bins=bins
+    )
 
 
 def is_complex_table(table: TableItem) -> bool:
@@ -54,98 +143,135 @@ class TableEvaluator:
         self._teds_scorer = TEDScorer()
         self._stopwords = ["<i>", "</i>", "<b>", "</b>", "<u>", "</u>"]
 
-    def __call__(self, ds_path: Path, split: str) -> DatasetTableEvaluation:
+    def __call__(self, ds_path: Path, split: str = "test") -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
         "GTDoclingDocument"
         "PredictionDoclingDocument"
         """
-        table_evaluations = []
-        ds = datasets.load_from_disk(ds_path)
-        ds = ds[split]
-        for i, data in enumerate(ds):
-            gt_doc_dict = data["GroundTruthDoclingDocument"]
-            gt_doc = DoclingDocument.model_validate_json(gt_doc_dict)
-            pred_doc_dict = data["PredictedDoclingDocument"]
-            pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
-            table_evaluations.extend(
-                self._evaluate_tables_in_documents(gt_doc, pred_doc)
+        logging.info(f"loading from: {ds_path}")
+
+        # Load the Parquet file
+        # dataset = Dataset.from_parquet("benchmarks/dpbench-tableformer/test/shard_000000_000000.parquet")
+        # dataset.save_to_disk("benchmarks/dpbench-tableformer-dataset")
+
+        test_path = str(ds_path / "test" / "*.parquet")
+        train_path = str(ds_path / "train" / "*.parquet")
+
+        test_files = glob.glob(test_path)
+        train_files = glob.glob(train_path)
+        logging.info(f"test-files: {test_files}, train-files: {train_files}")
+
+        # Load all files into the `test`-`train` split
+        ds = None
+        if len(test_files) > 0 and len(train_files) > 0:
+            ds = load_dataset(
+                "parquet", data_files={"test": test_files, "train": train_files}
             )
+        elif len(test_files) > 0 and len(train_files) == 0:
+            ds = load_dataset("parquet", data_files={"test": test_files})
+
+        logging.info(f"oveview of dataset: {ds}")
+
+        table_evaluations = []
+        # ds = datasets.load_from_disk(ds_path)
+        if ds is not None:
+            ds_selection: Dataset = ds[split]
+
+        for i, data in tqdm(
+            enumerate(ds_selection),
+            desc="Table evaluations",
+            ncols=120,
+            total=len(ds_selection),
+        ):
+            # gt_doc_dict = data["GroundTruthDoclingDocument"]
+            gt_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
+            gt_doc = DoclingDocument.model_validate_json(gt_doc_dict)
+            # pred_doc_dict = data["PredictedDoclingDocument"]
+            pred_doc_dict = data[BenchMarkColumns.PREDICTION]
+            pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
+
+            results = self._evaluate_tables_in_documents(
+                doc_id=data[BenchMarkColumns.DOC_ID], true_doc=gt_doc, pred_doc=pred_doc
+            )
+
+            table_evaluations.extend(results)
 
         # Compute TED statistics for the entire dataset
         teds_simple = []
         teds_complex = []
         teds_all = []
         for te in table_evaluations:
+            teds_all.append(te.TEDS)
+
             if te.is_complex:
                 teds_complex.append(te.TEDS)
             else:
                 teds_simple.append(te.TEDS)
-            teds_all.append(te.TEDS)
-
-        all_mean_TEDS = statistics.mean(teds_all) if len(teds_simple) > 0 else None
-        simple_mean_TEDS = (
-            statistics.mean(teds_simple) if len(teds_simple) > 0 else None
-        )
-        complex_mean_TEDS = (
-            statistics.mean(teds_complex) if len(teds_complex) > 0 else None
-        )
-        all_std_TEDS = statistics.stdev(teds_all) if len(teds_simple) >= 2 else None
-        simple_std_TEDS = (
-            statistics.stdev(teds_simple) if len(teds_simple) >= 2 else None
-        )
-        complex_std_TEDS = (
-            statistics.stdev(teds_complex) if len(teds_complex) >= 2 else None
-        )
 
         dataset_evaluation = DatasetTableEvaluation(
             evaluations=table_evaluations,
-            total_mean_TEDS=all_mean_TEDS,
-            simple_mean_TEDS=simple_mean_TEDS,
-            complex_mean_TEDS=complex_mean_TEDS,
-            total_std_TEDS=all_std_TEDS,
-            simple_std_TEDS=simple_std_TEDS,
-            complex_std_TEDS=complex_std_TEDS,
+            TEDS=compute_stats(teds_all),
+            TEDS_simple=compute_stats(teds_simple),
+            TEDS_complex=compute_stats(teds_complex),
         )
         return dataset_evaluation
 
     def _evaluate_tables_in_documents(
         self,
-        gt_doc: DoclingDocument,
+        doc_id: str,
+        true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         structure_only: bool = False,
     ) -> list[TableEvaluation]:
         r""" """
         table_evaluations = []
-        gt_tables = gt_doc.tables
+        true_tables = true_doc.tables
         pred_tables = pred_doc.tables
 
-        for table_id in range(min(len(gt_tables), len(pred_tables))):
-            gt_table = gt_tables[table_id]
-            is_complex = is_complex_table(gt_table)
-            gt_html = gt_table.export_to_html()
-            predicted_html = pred_tables[table_id].export_to_html()
+        # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
+        assert len(true_tables) == len(
+            pred_tables
+        ), "len(true_tables)!=len(pred_tables)"
 
-            # Filter out tags that may be present in GT but not in prediction to avoid penalty
-            for stopword in self._stopwords:
-                predicted_html = predicted_html.replace(stopword, "")
-            for stopword in self._stopwords:
-                gt_html = gt_html.replace(stopword, "")
+        for table_id in range(len(true_tables)):  # , len(pred_tables)):
 
-            gt_html_obj = html.fromstring(gt_html)
-            predicted_html_obj = html.fromstring(predicted_html)
-            teds = self._teds_scorer(gt_html_obj, predicted_html_obj, structure_only)
-            teds = round(teds, 3)
-            table_evaluation = TableEvaluation(TEDS=teds, is_complex=is_complex)
-            table_evaluations.append(table_evaluation)
+            try:
+                true_table = true_tables[table_id]
+                pred_table = pred_tables[table_id]
+
+                is_complex = is_complex_table(true_table)
+
+                true_html = true_table.export_to_html()
+                pred_html = pred_table.export_to_html()
+
+                # Filter out tags that may be present in GT but not in prediction to avoid penalty
+                for stopword in self._stopwords:
+                    predicted_html = pred_html.replace(stopword, "")
+                for stopword in self._stopwords:
+                    true_html = true_html.replace(stopword, "")
+
+                true_html_obj = html.fromstring(true_html)
+                pred_html_obj = html.fromstring(pred_html)
+
+                teds = self._teds_scorer(true_html_obj, pred_html_obj, structure_only)
+                # logging.info(f"teds: {teds}")
+
+                teds = round(teds, 3)
+                table_evaluation = TableEvaluation(
+                    TEDS=teds,
+                    is_complex=is_complex,
+                    filename=doc_id,
+                    table_id=table_id,
+                    true_ncols=true_table.data.num_cols,
+                    pred_ncols=pred_table.data.num_cols,
+                    true_nrows=true_table.data.num_rows,
+                    pred_nrows=pred_table.data.num_rows,
+                )
+                table_evaluations.append(table_evaluation)
+            except Exception as exc:
+                logging.error(
+                    f"Table {table_id} from document {doc_id} could not be compared!"
+                )
+
         return table_evaluations
-
-    # def _dump_full_table_html(self, image_filename: str, full_table_html: str):
-    #     r"""
-    #     Save the full_table_html as a file
-    #     """
-    #     Path(self._viz_dir).mkdir(parents=True, exist_ok=True)
-    #     html_filename = "{}.html".format(Path(image_filename).stem)
-    #     html_fn = os.path.join(self._viz_dir, html_filename)
-    #     with open(html_fn, "w") as fd:
-    #         fd.write(full_table_html)
