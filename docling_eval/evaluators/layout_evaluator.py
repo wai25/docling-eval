@@ -1,8 +1,7 @@
 import glob
 import logging
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from datasets import Dataset, load_dataset
@@ -33,12 +32,22 @@ class DatasetLayoutEvaluation(BaseModel):
 
     evaluations: List[LayoutEvaluation]
 
-    def to_table(self) -> List[List[str]]:
-        table = []
-        for _ in self.evaluations:
-            table.append([_.name, "" if _.label is None else _.label, f"{_.value:.3f}"])
+    def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
-        return table
+        headers = ["label", "Class mAP[0.5:0.95]"]
+
+        self.evaluations = sorted(self.evaluations, key=lambda x: x.value, reverse=True)
+
+        table = []
+        for i in range(len(self.evaluations)):
+            table.append(
+                [
+                    f"{self.evaluations[i].label}",
+                    f"{100.0*self.evaluations[i].value:.2f}",
+                ]
+            )
+
+        return table, headers
 
 
 class LayoutEvaluator:
@@ -100,8 +109,11 @@ class LayoutEvaluator:
                 filter_labels=intersection_labels,
             )
 
-            ground_truths.extend(gts)
-            predictions.extend(preds)
+            if len(gts) == len(preds):
+                ground_truths.extend(gts)
+                predictions.extend(preds)
+            else:
+                logging.error("Ignoring predictions for document")
 
         assert len(ground_truths) == len(
             predictions
@@ -200,6 +212,7 @@ class LayoutEvaluator:
                         else:
                             pred_labels[item.label] = 1
 
+        """
         logging.info(f"True labels:")
         for label, count in true_labels.items():
             logging.info(f" => {label}: {count}")
@@ -207,6 +220,7 @@ class LayoutEvaluator:
         logging.info(f"Pred labels:")
         for label, count in pred_labels.items():
             logging.info(f" => {label}: {count}")
+        """
 
         intersection_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
@@ -232,7 +246,7 @@ class LayoutEvaluator:
         # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
         assert len(true_doc.pages) == len(
             pred_doc.pages
-        ), "len(true_doc.pages)==len(pred_doc.pages)"
+        ), f"len(true_doc.pages)==len(pred_doc.pages) => {len(true_doc.pages)}=={len(pred_doc.pages)}"
 
         # page_num -> List[DocItem]
         true_pages_to_objects: Dict[int, List[DocItem]] = {}
@@ -271,7 +285,7 @@ class LayoutEvaluator:
             for item in items:
                 for prov in item.prov:
 
-                    bbox = prov.bbox.to_bottom_left_origin(page_height=page_height)
+                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
 
@@ -300,13 +314,13 @@ class LayoutEvaluator:
             for item in items:
                 for prov in item.prov:
 
-                    bbox = prov.bbox.to_bottom_left_origin(page_height=page_height)
+                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
 
                     # logging.info(f"prediction {page_no}: {page_width, page_height} -> {item.label}, {bbox.coord_origin}: [{bbox.l}, {bbox.b}, {bbox.r}, {bbox.t}]")
 
-                    bboxes.append([bbox.l, bbox.b, bbox.r, bbox.t])
+                    bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
                     labels.append(filter_labels.index(item.label))
                     scores.append(1.0)  # FIXME
 
@@ -318,8 +332,10 @@ class LayoutEvaluator:
                 }
             )
 
+        """
         assert len(ground_truths) == len(
             predictions
-        ), "len(ground_truths)==len(predictions)"
+        ), f"len(ground_truths)==len(predictions) => {len(ground_truths)}=={len(predictions)}"
+        """
 
         return ground_truths, predictions

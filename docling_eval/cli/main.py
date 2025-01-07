@@ -1,17 +1,24 @@
 import json
 import logging
 import os
-from enum import Enum, auto
+from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
-import matplotlib.pyplot as plt
 import typer
+from tabulate import tabulate  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
 from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_e2e_dataset,
     create_dpbench_tableformer_dataset,
+)
+from docling_eval.benchmarks.omnidocbench.create import (
+    create_omnidocbench_e2e_dataset,
+    create_omnidocbench_tableformer_dataset,
+)
+from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
+    create_fintabnet_tableformer_dataset,
 )
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
@@ -75,6 +82,21 @@ def create(
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
+    elif benchmark == BenchMarkNames.OMNIDOCBENCH:
+        if (
+            modality == EvaluationModality.END2END
+            or modality == EvaluationModality.LAYOUT
+        ):
+            create_omnidocbench_e2e_dataset(
+                omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
+            )
+        elif modality == EvaluationModality.TABLEFORMER:
+            create_omnidocbench_tableformer_dataset(
+                omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
     else:
         log.error(f"{benchmark} is not yet implemented")
 
@@ -122,39 +144,43 @@ def visualise(
         pass
 
     elif modality == EvaluationModality.LAYOUT:
-        pass
+        with open(filename, "r") as fd:
+            layout_evaluation = DatasetLayoutEvaluation.parse_file(filename)
+
+        data, headers = layout_evaluation.to_table()
+
+        logging.info(
+            "Class mAP[0.5:0.95] table: \n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
 
     elif modality == EvaluationModality.TABLEFORMER:
 
         with open(filename, "r") as fd:
-            evaluation = DatasetTableEvaluation.parse_file(filename)
+            table_evaluation = DatasetTableEvaluation.parse_file(filename)
 
-        # Calculate bin widths
-        bin_widths = [
-            evaluation.TEDS.bins[i + 1] - evaluation.TEDS.bins[i]
-            for i in range(len(evaluation.TEDS.bins) - 1)
-        ]
-        bin_middle = [
-            (evaluation.TEDS.bins[i + 1] + evaluation.TEDS.bins[i]) / 2.0
-            for i in range(len(evaluation.TEDS.bins) - 1)
-        ]
+        figname = (
+            odir / f"evaluation_{benchmark.value}_{modality.value}-delta_row_col.png"
+        )
+        table_evaluation.save_histogram_delta_row_col(figname=figname)
 
-        for i in range(len(evaluation.TEDS.bins) - 1):
-            logging.info(
-                f"{i:02} [{evaluation.TEDS.bins[i]:.3f}, {evaluation.TEDS.bins[i+1]:.3f}]: {evaluation.TEDS.hist[i]}"
-            )
-
-        # Plot histogram
-        plt.bar(bin_middle, evaluation.TEDS.hist, width=bin_widths, edgecolor="black")
-        # width=(evaluation.TEDS.bins[1] - evaluation.TEDS.bins[0]),
-
-        plt.xlabel("TEDS")
-        plt.ylabel("Frequency")
-        plt.title(f"benchmark: {benchmark.value}, modality: {modality.value}")
+        data, headers = table_evaluation.TEDS.to_table()
+        logging.info(
+            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
+        )
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        logging.info(f"saving figure to {figname}")
-        plt.savefig(figname)
+        table_evaluation.TEDS.save_histogram(figname=figname, name="struct-with-text")
+
+        data, headers = table_evaluation.TEDS_struct.to_table()
+        logging.info(
+            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        figname = (
+            odir / f"evaluation_{benchmark.value}_{modality.value}-struct-only.png"
+        )
+        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="struct")
 
     elif modality == EvaluationModality.CODEFORMER:
         pass

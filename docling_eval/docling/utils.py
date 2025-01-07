@@ -1,25 +1,16 @@
 import base64
 import io
 import logging
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import version
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd  # import-untyped
 from datasets import Dataset, DatasetInfo, Features, concatenate_datasets
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
-from docling_core.types.doc.document import (
-    DoclingDocument,
-    ImageRef,
-    PageItem,
-    ProvenanceItem,
-    TableCell,
-    TableData,
-    TableItem,
-)
-from docling_core.types.doc.labels import DocItemLabel
-from PIL import Image as PILImage
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
+from docling_core.types.doc.document import DoclingDocument, PageItem
+from PIL import Image  # as PILImage
 from pydantic import AnyUrl
 
 from docling_eval.docling.constants import HTML_DEFAULT_HEAD
@@ -58,6 +49,25 @@ def map_to_records(item: Dict):
     return df.to_dict(orient="records")
 
 
+def from_pil_to_base64(img: Image.Image) -> str:
+    # Convert the image to a base64 str
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")  # Specify the format (e.g., JPEG, PNG, etc.)
+    image_bytes = buffered.getvalue()
+
+    # Encode the bytes to a Base64 string
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    return image_base64
+
+
+def from_pil_to_base64uri(img: Image.Image) -> AnyUrl:
+
+    image_base64 = from_pil_to_base64(img)
+    uri = AnyUrl(f"data:image/png;base64,{image_base64}")
+
+    return uri
+
+
 def to_base64(item: Dict[str, Any]) -> str:
     image_bytes = item["bytes"]
 
@@ -65,7 +75,7 @@ def to_base64(item: Dict[str, Any]) -> str:
     image_stream = BytesIO(image_bytes)
 
     # Open the image using PIL
-    image = PILImage.open(image_stream)
+    image = Image.open(image_stream)
 
     # Convert the image to a bytes object
     buffered = io.BytesIO()
@@ -86,7 +96,7 @@ def to_pil(uri):
     image_data = base64.b64decode(base64_string)
 
     # Step 2: Open the image using Pillow
-    image = PILImage.open(BytesIO(image_data))
+    image = Image.open(BytesIO(image_data))
 
     return image
 
@@ -200,7 +210,7 @@ def generate_dataset_info(
     dataset_info.save_to_disk(str(output_dir))
 
 
-def crop_bounding_box(page_image: PILImage.Image, page: PageItem, bbox: BoundingBox):
+def crop_bounding_box(page_image: Image.Image, page: PageItem, bbox: BoundingBox):
     """
     Crop a bounding box from a PIL image.
 
@@ -214,36 +224,20 @@ def crop_bounding_box(page_image: PILImage.Image, page: PageItem, bbox: Bounding
     width = float(page.size.width)
     height = float(page.size.height)
 
-    l = bbox.l
-    t = bbox.t
-    r = bbox.r
-    b = bbox.b
-
-    origin = bbox.coord_origin
-
-    img_height = float(page_image.height)
     img_width = float(page_image.width)
+    img_height = float(page_image.height)
 
     scale_x = img_width / width
     scale_y = img_height / height
 
-    pil_l = l * scale_x
-    pil_r = r * scale_x
+    bbox = bbox.to_top_left_origin(page.size.height)
 
-    pil_t = -1.0
-    pil_b = -1.0
-
-    # Convert top and bottom to PIL coordinate system
-    if origin == CoordOrigin.BOTTOMLEFT:
-        pil_t = img_height - b * scale_y
-        pil_b = img_height - t * scale_y
-    elif origin == CoordOrigin.TOPLEFT:
-        pil_t = t * scale_y
-        pil_b = b * scale_y
-    else:
-        raise ValueError(f"origin can not have another value: {origin}")
+    l = bbox.l * scale_x
+    t = bbox.t * scale_y
+    r = bbox.r * scale_x
+    b = bbox.b * scale_y
 
     # Crop using the converted coordinates
-    cropped_image = page_image.crop((pil_l, pil_b, pil_r, pil_t))
+    cropped_image = page_image.crop((l, t, r, b))
 
     return cropped_image

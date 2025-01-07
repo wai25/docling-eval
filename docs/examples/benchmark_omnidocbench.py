@@ -6,9 +6,9 @@ from huggingface_hub import snapshot_download
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
-from docling_eval.benchmarks.dpbench.create import (
-    create_dpbench_e2e_dataset,
-    create_dpbench_tableformer_dataset,
+from docling_eval.benchmarks.omnidocbench.create import (
+    create_omnidocbench_e2e_dataset,
+    create_omnidocbench_tableformer_dataset,
 )
 from docling_eval.cli.main import evaluate, visualise
 
@@ -23,15 +23,15 @@ logger = logging.getLogger(__name__)
 
 def main():
 
-    idir = Path(f"./benchmarks/{BenchMarkNames.DPBENCH.value}-original")
+    idir = Path(f"./benchmarks/{BenchMarkNames.OMNIDOCBENCH.value}-original")
 
     snapshot_download(
-        repo_id="upstage/dp-bench",
+        repo_id="opendatalab/OmniDocBench",
         repo_type="dataset",
         local_dir=idir,
     )
 
-    odir = Path(f"./benchmarks/{BenchMarkNames.DPBENCH.value}-dataset")
+    odir = Path(f"./benchmarks/{BenchMarkNames.OMNIDOCBENCH.value}-dataset")
 
     odir_lay = Path(odir) / "layout"
     odir_tab = Path(odir) / "tableformer"
@@ -42,37 +42,38 @@ def main():
     image_scale = 1.0
 
     if True:
-        create_dpbench_e2e_dataset(
-            dpbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
+
+        create_omnidocbench_e2e_dataset(
+            omnidocbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
         )
 
         evaluate(
             modality=EvaluationModality.LAYOUT,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_lay,
             odir=odir_lay,
         )
         visualise(
             modality=EvaluationModality.LAYOUT,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_lay,
             odir=odir_lay,
         )
 
     if True:
-        create_dpbench_tableformer_dataset(
-            dpbench_dir=idir, output_dir=odir_tab, image_scale=image_scale
+        create_omnidocbench_tableformer_dataset(
+            omnidocbench_dir=idir, output_dir=odir_tab, image_scale=image_scale
         )
 
         evaluate(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_tab,
             odir=odir_tab,
         )
         visualise(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_tab,
             odir=odir_tab,
         )

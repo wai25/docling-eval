@@ -15,6 +15,7 @@ class BenchMarkColumns(str, Enum):
     PICTURES = "pictures"
 
     MIMETYPE = "mimetype"
+    TIMINGS = "timings"
 
 
 class EvaluationModality(str, Enum):
@@ -28,7 +29,7 @@ class BenchMarkNames(str, Enum):
 
     # End-to-End
     DPBENCH = "DPBench"
-    OMNIDOCBENCH = "OmniDcoBench"
+    OMNIDOCBENCH = "OmniDocBench"
     WORDSCAPE = "WordScape"
 
     # Layout
