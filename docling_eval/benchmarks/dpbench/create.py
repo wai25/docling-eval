@@ -283,7 +283,7 @@ def create_dpbench_e2e_dataset(
                 page_height=page_height,
             )
 
-        if True:
+        if False:
             """
             save_comparison_html(
                 filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",
@@ -304,10 +304,16 @@ def create_dpbench_e2e_dataset(
                 pred_labels=PRED_HTML_EXPORT_LABELS,
             )
 
-        pred_doc, pictures, page_images = extract_images(
-            pred_doc,
-            pictures_column=BenchMarkColumns.PICTURES.value,  # pictures_column,
-            page_images_column=BenchMarkColumns.PAGE_IMAGES.value,  # page_images_column,
+        true_doc, true_pictures, true_page_images = extract_images(
+            document=true_doc,
+            pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+        )
+
+        pred_doc, pred_pictures, pred_page_images = extract_images(
+            document=pred_doc,
+            pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
         )
 
         record = {
@@ -315,11 +321,13 @@ def create_dpbench_e2e_dataset(
             BenchMarkColumns.STATUS: str(conv_results.status),
             BenchMarkColumns.DOC_ID: str(filename),
             BenchMarkColumns.GROUNDTRUTH: json.dumps(true_doc.export_to_dict()),
+            BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
+            BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
             BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
+            BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
+            BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
             BenchMarkColumns.ORIGINAL: get_binary(pdf_path),
             BenchMarkColumns.MIMETYPE: "application/pdf",
-            BenchMarkColumns.PAGE_IMAGES: page_images,
-            BenchMarkColumns.PICTURES: pictures,
         }
         records.append(record)
 
@@ -361,7 +369,7 @@ def create_dpbench_tableformer_dataset(
         pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
 
         # Create the groundtruth Document
-        true_doc = DoclingDocument(name=f"ground-truth {os.path.basename(pdf_path)}")
+        true_doc = DoclingDocument(name=f"{os.path.basename(pdf_path)}")
         true_doc, true_page_images = add_pages_to_true_doc(
             pdf_path=pdf_path, true_doc=true_doc, image_scale=image_scale
         )
@@ -398,6 +406,18 @@ def create_dpbench_tableformer_dataset(
                     pred_labels=PRED_HTML_EXPORT_LABELS,
                 )
 
+            true_doc, true_pictures, true_page_images = extract_images(
+                document=true_doc,
+                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+            )
+
+            pred_doc, pred_pictures, pred_page_images = extract_images(
+                document=pred_doc,
+                pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
+            )
+
             record = {
                 BenchMarkColumns.DOCLING_VERSION: docling_version(),
                 BenchMarkColumns.STATUS: "SUCCESS",
@@ -406,8 +426,10 @@ def create_dpbench_tableformer_dataset(
                 BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
                 BenchMarkColumns.ORIGINAL: get_binary(pdf_path),
                 BenchMarkColumns.MIMETYPE: "application/pdf",
-                BenchMarkColumns.PAGE_IMAGES: true_page_images,
-                BenchMarkColumns.PICTURES: [],  # pred_pictures,
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
+                BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
+                BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
+                BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
             }
             records.append(record)
 
@@ -486,6 +508,18 @@ def create_dpbench_readingorder_dataset(
                     pred_labels=PRED_HTML_EXPORT_LABELS,
                 )
 
+            true_doc, true_pictures, true_page_images = extract_images(
+                document=true_doc,
+                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+            )
+
+            pred_doc, pred_pictures, pred_page_images = extract_images(
+                document=pred_doc,
+                pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
+            )
+
             record = {
                 BenchMarkColumns.DOCLING_VERSION: docling_version(),
                 BenchMarkColumns.STATUS: "SUCCESS",
@@ -494,8 +528,10 @@ def create_dpbench_readingorder_dataset(
                 BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
                 BenchMarkColumns.ORIGINAL: get_binary(pdf_path),
                 BenchMarkColumns.MIMETYPE: "application/pdf",
-                BenchMarkColumns.PAGE_IMAGES: true_page_images,
-                BenchMarkColumns.PICTURES: [],  # pred_pictures,
+                BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
+                BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
+                BenchMarkColumns.GROUNDTRUTH_PICTURES: pred_pictures,
             }
             records.append(record)
 
