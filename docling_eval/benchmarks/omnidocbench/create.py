@@ -295,6 +295,7 @@ def create_omnidocbench_e2e_dataset(
 
         assert len(true_page_images) == 1, "len(true_page_images)==1"
 
+        # The true_doc.pages is a dict with the page numbers as indices starting at 1
         page_width = true_doc.pages[1].size.width
         page_height = true_doc.pages[1].size.height
 

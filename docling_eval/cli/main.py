@@ -24,6 +24,15 @@ from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
 )
+from docling_eval.evaluators.markdown_text_evaluator import (
+    DatasetMarkdownEvaluation,
+    MarkdownTextEvaluator,
+)
+from docling_eval.evaluators.readingorder_evaluator import (
+    DatasetReadingOrderEvaluation,
+    ReadingOrderEvaluator,
+    ReadingOrderVisualizer,
+)
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
@@ -65,7 +74,6 @@ def create(
         odir = Path("./benchmarks") / benchmark.value / modality.value
 
     if benchmark == BenchMarkNames.DPBENCH:
-
         if (
             modality == EvaluationModality.END2END
             or modality == EvaluationModality.LAYOUT
@@ -128,6 +136,32 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
+    elif modality == EvaluationModality.READING_ORDER:
+        readingorder_evaluator = ReadingOrderEvaluator()
+        readingorder_evaluation = readingorder_evaluator(idir, split="test")
+
+        with open(save_fn, "w") as fd:
+            json.dump(
+                readingorder_evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+
+    elif modality == EvaluationModality.MARKDOWN_TEXT:
+        md_evaluator = MarkdownTextEvaluator()
+        md_evaluation = md_evaluator(idir, split="test")
+
+        with open(save_fn, "w") as fd:
+            json.dump(
+                md_evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+
     elif modality == EvaluationModality.CODEFORMER:
         pass
 
@@ -161,7 +195,7 @@ def visualise(
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
         layout_evaluation.mAP_stats.save_histogram(
-            figname=figname, name="struct-with-text"
+            figname=figname, name="TEDS struct-with-text"
         )
 
     elif modality == EvaluationModality.TABLEFORMER:
@@ -180,7 +214,9 @@ def visualise(
         )
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        table_evaluation.TEDS.save_histogram(figname=figname, name="struct-with-text")
+        table_evaluation.TEDS.save_histogram(
+            figname=figname, name="TEDS struct-with-text"
+        )
 
         data, headers = table_evaluation.TEDS_struct.to_table()
         logging.info(
@@ -190,7 +226,82 @@ def visualise(
         figname = (
             odir / f"evaluation_{benchmark.value}_{modality.value}-struct-only.png"
         )
-        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="struct")
+        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="TEDS struct")
+
+    elif modality == EvaluationModality.READING_ORDER:
+        with open(filename, "r") as fd:
+            ro_evaluation = DatasetReadingOrderEvaluation.parse_file(filename)
+        # ARD
+        logging.info(
+            "Reading order (Norm Average Relative Distance)"
+            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                ro_evaluation.ard_stats.mean,
+                ro_evaluation.ard_stats.median,
+                ro_evaluation.ard_stats.std,
+            )
+        )
+
+        data, headers = ro_evaluation.ard_stats.to_table("ARD")
+        logging.info(
+            "Reading order - Normalized Average Relative Distance: Quantiles\n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        logging.info("Generate histogram plot for ARD")
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}_ARD.png"
+        ro_evaluation.ard_stats.save_histogram(figname=figname, name="ARD_norm")
+
+        # Weighted ARD
+        logging.info(
+            "Reading order (Weighted Normalized Average Relative Distance)"
+            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                ro_evaluation.w_ard_stats.mean,
+                ro_evaluation.w_ard_stats.median,
+                ro_evaluation.w_ard_stats.std,
+            )
+        )
+        data, headers = ro_evaluation.w_ard_stats.to_table("Weighted ARD")
+        logging.info(
+            "Reading order - Weighted Normalized Average Relative Distance: Quantiles\n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        logging.info("Generate histogram plot for weighted ARD")
+        figname = (
+            odir / f"evaluation_{benchmark.value}_{modality.value}_weighted_ARD.png"
+        )
+        ro_evaluation.w_ard_stats.save_histogram(
+            figname=figname, name="Weighted ARD_norm"
+        )
+
+        # Generate visualizations of the reading order across the GT and the prediction
+        ro_visualizer = ReadingOrderVisualizer()
+        ro_visualizer(idir, filename, odir, split="test")
+
+    elif modality == EvaluationModality.MARKDOWN_TEXT:
+        with open(filename, "r") as fd:
+            md_evaluation = DatasetMarkdownEvaluation.parse_file(filename)
+
+        # Log BLEU mean/median/std
+        logging.info(
+            "Markdown text (BLEU) [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                md_evaluation.bleu_stats.mean,
+                md_evaluation.bleu_stats.median,
+                md_evaluation.bleu_stats.std,
+            )
+        )
+
+        # Log table with quantiles
+        data, headers = md_evaluation.bleu_stats.to_table("BlEU")
+        logging.info(
+            "Markdown text (BLEU): \n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        # Generate histogram plot
+        logging.info("Generate histogram plot for BLEU")
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        md_evaluation.bleu_stats.save_histogram(figname=figname, name="BLEU")
 
     elif modality == EvaluationModality.CODEFORMER:
         pass

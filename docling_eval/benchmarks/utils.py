@@ -111,7 +111,7 @@ def write_datasets_info(
         json.dump(dataset_infos, fw, indent=2)
 
 
-def get_input_document(file: Path):
+def get_input_document(file: Path) -> InputDocument:
     return InputDocument(
         path_or_stream=file,
         format=InputFormat.PDF,  # type: ignore[arg-type]
@@ -132,7 +132,7 @@ def add_pages_to_true_doc(
 
     for page_no in range(0, in_doc.page_count):
         page = Page(page_no=page_no)
-        page._backend = in_doc._backend.load_page(page.page_no)
+        page._backend = in_doc._backend.load_page(page.page_no)  # type: ignore[attr-defined]
 
         if page._backend is not None and page._backend.is_valid():
             page.size = page._backend.get_size()
@@ -298,6 +298,52 @@ def save_comparison_html(
 
     with open(str(filename), "w") as fw:
         fw.write(comparison_page)
+
+
+def draw_arrow(
+    draw: ImageDraw.ImageDraw,
+    arrow_coords: tuple[float, float, float, float],
+    line_width: int = 2,
+    color: str = "red",
+):
+    r"""
+    Draw an arrow inside the given draw object
+    """
+    x0, y0, x1, y1 = arrow_coords
+
+    # Arrow parameters
+    start_point = (x0, y0)  # Starting point of the arrow
+    end_point = (x1, y1)  # Ending point of the arrow
+    arrowhead_length = 20  # Length of the arrowhead
+    arrowhead_width = 10  # Width of the arrowhead
+
+    # Draw the arrow shaft (line)
+    draw.line([start_point, end_point], fill=color, width=line_width)
+
+    # Calculate the arrowhead points
+    dx = end_point[0] - start_point[0]
+    dy = end_point[1] - start_point[1]
+    angle = (dx**2 + dy**2) ** 0.5 + 0.01  # Length of the arrow shaft
+
+    # Normalized direction vector for the arrow shaft
+    ux, uy = dx / angle, dy / angle
+
+    # Base of the arrowhead
+    base_x = end_point[0] - ux * arrowhead_length
+    base_y = end_point[1] - uy * arrowhead_length
+
+    # Left and right points of the arrowhead
+    left_x = base_x - uy * arrowhead_width
+    left_y = base_y + ux * arrowhead_width
+    right_x = base_x + uy * arrowhead_width
+    right_y = base_y - ux * arrowhead_width
+
+    # Draw the arrowhead (triangle)
+    draw.polygon(
+        [end_point, (left_x, left_y), (right_x, right_y)],
+        fill=color,
+    )
+    return draw
 
 
 def draw_clusters_with_reading_order(
