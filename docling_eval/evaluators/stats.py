@@ -69,7 +69,7 @@ class DatasetStatistics(BaseModel):
             f"{name} (mean: {self.mean:.2f}, median: {self.median:.2f}, std: {self.std:.2f}, total: {self.total})"
         )
 
-        logging.info(f"saving figure to {figname}")
+        logging.info(f"Saving figure to {figname}")
         plt.savefig(figname)
 
 

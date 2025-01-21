@@ -91,6 +91,7 @@ def log_and_save_stats(
     log.info(content)
     with open(log_filename, "w") as fd:
         fd.write(content)
+        log.info("Saving statistics report to %s", log_filename)
     stats.save_histogram(figname=fig_filename, name=metric)
 
     return log_filename, fig_filename
@@ -221,7 +222,7 @@ def visualise(
 
         # Save layout statistics for mAP
         log_filename, _ = log_and_save_stats(
-            odir, benchmark, modality, "mAP[0.5_0.95]", layout_evaluation.mAP_stats
+            odir, benchmark, modality, "mAP_0.5_0.95", layout_evaluation.mAP_stats
         )
 
         # Append to layout statistics the mAP classes
