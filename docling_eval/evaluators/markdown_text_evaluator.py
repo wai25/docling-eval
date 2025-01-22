@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import nltk
 from datasets import load_dataset
 from docling_core.types.doc.base import ImageRefMode
 from docling_core.types.doc.document import DoclingDocument
@@ -31,7 +32,8 @@ class DatasetMarkdownEvaluation(BaseModel):
 
 class MarkdownTextEvaluator:
     def __init__(self):
-        pass
+        # Download the necessary NLTK data for the tokenizer
+        nltk.download("punkt_tab", quiet=True)
 
     def __call__(self, ds_path: Path, split: str = "test") -> DatasetMarkdownEvaluation:
         parquet_files = str(ds_path / split / "*.parquet")
