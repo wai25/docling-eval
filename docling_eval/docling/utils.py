@@ -138,14 +138,41 @@ def insert_images(
     # Save page images
     for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-            b64 = to_base64(pictures[pic_no - 1])
-            picture.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
+            if pic_no < len(pictures):
+                b64 = to_base64(pictures[pic_no])
+
+                image_ref = document.pictures[pic_no].image
+                if image_ref is not None:
+                    image_ref.uri = AnyUrl(f"data:image/png;base64,{b64}")
+                    document.pictures[pic_no].image = image_ref
+                else:
+                    logging.warning(f"image-ref is none for picture {pic_no}")
+
+                """
+                if document.pictures[pic_no].image is not None:                    
+                    document.pictures[pic_no].image.uri = AnyUrl(
+                        f"data:image/png;base64,{b64}"
+                    )
+                else:
+                    logging.warning(f"image-ref is none for picture {pic_no}")
+                """
+
+            """
+            else:
+                document.pictures[pic_no].image.uri = None
+                # logging.warning(f"inconsistent number of images in the document ({len(pictures)} != {len(document.pictures)})")
+            """
 
     # Save page images
     for page_no, page in document.pages.items():
         if page.image is not None:
+            # print(f"inserting image to page: {page_no}")
             b64 = to_base64(page_images[page_no - 1])
-            page.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
+
+            image_ref = document.pages[page_no].image
+            if image_ref is not None:
+                image_ref.uri = AnyUrl(f"data:image/png;base64,{b64}")
+                document.pages[page_no].image = image_ref
 
     return document
 

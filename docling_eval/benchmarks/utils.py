@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -34,41 +35,17 @@ from docling_eval.docling.constants import (
 )
 from docling_eval.docling.utils import from_pil_to_base64, from_pil_to_base64uri
 
-"""
-def write_datasets_info(
-    name: str, output_dir: Path, num_train_rows: int, num_test_rows: int
-):
 
-    columns = [
-        {"name": BenchMarkColumns.DOCLING_VERSION, "type": "string"},
-        {"name": BenchMarkColumns.STATUS, "type": "string"},
-        {"name": BenchMarkColumns.DOC_ID, "type": "string"},
-        {"name": BenchMarkColumns.GROUNDTRUTH, "type": "string"},
-        {"name": BenchMarkColumns.PREDICTION, "type": "string"},
-        {"name": BenchMarkColumns.ORIGINAL, "type": "string"},
-        {"name": BenchMarkColumns.MIMETYPE, "type": "string"},
-        {"name": BenchMarkColumns.PREDICTION_PICTURES, "type": {"list": {"item": "Image"}}},
-        {"name": BenchMarkColumns.PREDICTION_PAGE_IMAGES, "type": {"list": {"item": "Image"}}},
-        {"name": BenchMarkColumns.GROUNDTRUTH_PICTURES, "type": {"list": {"item": "Image"}}},
-        {"name": BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES, "type": {"list": {"item": "Image"}}},
-    ]
+def get_binhash(binary_data: bytes) -> str:
+    # Create a hash object (e.g., SHA-256)
+    hash_object = hashlib.sha256()
 
-    dataset_infos = {
-        "train": {
-            "description": f"Training split of {name}",
-            "schema": {"columns": columns},
-            "num_rows": num_train_rows,
-        },
-        "test": {
-            "description": f"Test split of {name}",
-            "schema": {"columns": columns},
-            "num_rows": num_test_rows,
-        },
-    }
+    # Update the hash object with the binary data
+    hash_object.update(binary_data)
 
-    with open(output_dir / f"dataset_infos.json", "w") as fw:
-        fw.write(json.dumps(dataset_infos, indent=2))
-"""
+    # Get the hexadecimal digest of the hash
+    hash_hex = hash_object.hexdigest()
+    return hash_hex
 
 
 def write_datasets_info(
@@ -79,19 +56,21 @@ def write_datasets_info(
             BenchMarkColumns.DOCLING_VERSION: Value("string"),
             BenchMarkColumns.STATUS: Value("string"),
             BenchMarkColumns.DOC_ID: Value("string"),
+            BenchMarkColumns.DOC_PATH: Value("string"),
+            BenchMarkColumns.DOC_HASH: Value("string"),
             BenchMarkColumns.GROUNDTRUTH: Value("string"),
-            BenchMarkColumns.PREDICTION: Value("string"),
-            BenchMarkColumns.ORIGINAL: Value("string"),
-            BenchMarkColumns.MIMETYPE: Value("string"),
-            BenchMarkColumns.PREDICTION_PICTURES: Sequence(Features_Image()),
-            BenchMarkColumns.PREDICTION_PAGE_IMAGES: Sequence(Features_Image()),
             BenchMarkColumns.GROUNDTRUTH_PICTURES: Sequence(Features_Image()),
             BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: Sequence(Features_Image()),
+            BenchMarkColumns.PREDICTION: Value("string"),
+            BenchMarkColumns.PREDICTION_PICTURES: Sequence(Features_Image()),
+            BenchMarkColumns.PREDICTION_PAGE_IMAGES: Sequence(Features_Image()),
+            BenchMarkColumns.ORIGINAL: Value("string"),
+            BenchMarkColumns.MIMETYPE: Value("string"),
         }
     )
 
     schema = features.to_dict()
-    print(json.dumps(schema, indent=2))
+    # print(json.dumps(schema, indent=2))
 
     dataset_infos = {
         "train": {
