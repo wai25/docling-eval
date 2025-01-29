@@ -35,6 +35,7 @@ def main():
             benchmark=BenchMarkNames.PUBTABNET,
             idir=odir_tab,
             odir=odir_tab,
+            split="val",
         )
         log.info("Visualize the tableformer for the PubTabNet dataset")
         visualise(
@@ -42,6 +43,7 @@ def main():
             benchmark=BenchMarkNames.PUBTABNET,
             idir=odir_tab,
             odir=odir_tab,
+            split="val",
         )
 
 
