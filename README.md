@@ -100,8 +100,8 @@ This command downloads the DocLayNet v1.1 dataset, runs the evaluations and prod
 <br>
 
 - [Layout evaluation json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout.json)
-- [mAP[0.5:0.95] report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].txt)
-- [mAP[0.5:0.95] plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].png)
+- [mAP[0.5:0.95] report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP_0.5_0.95.txt)
+- [mAP[0.5:0.95] plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP_0.5_0.95.png)
 
 </details>
 =======
