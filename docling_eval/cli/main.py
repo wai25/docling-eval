@@ -23,6 +23,10 @@ from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
     create_p1m_tableformer_dataset,
     create_pubtabnet_tableformer_dataset,
 )
+from docling_eval.evaluators.base_readingorder_evaluator import (
+    DatasetReadingOrderEvaluation,
+    ReadingOrderVisualizer,
+)
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
@@ -32,11 +36,12 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
-from docling_eval.evaluators.readingorder_evaluator import (
-    DatasetReadingOrderEvaluation,
-    ReadingOrderEvaluator,
-    ReadingOrderVisualizer,
-)
+
+# from docling_eval.evaluators.readingorder_evaluator_glm import (
+#    DatasetReadingOrderEvaluation,
+#    ReadingOrderEvaluatorGlm,
+# )
+from docling_eval.evaluators.readingorder_evaluator import ReadingOrderEvaluator
 from docling_eval.evaluators.stats import DatasetStatistics
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
@@ -259,7 +264,9 @@ def evaluate(
             json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
+        # readingorder_evaluator = ReadingOrderEvaluatorGlm()
         readingorder_evaluator = ReadingOrderEvaluator()
+
         readingorder_evaluation = readingorder_evaluator(idir, split=split)
 
         with open(save_fn, "w") as fd:
