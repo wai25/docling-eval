@@ -21,6 +21,7 @@ from docling_eval.utils.utils import (
     extract_images,
     from_pil_to_base64uri,
     get_binhash,
+    sort_cell_ids,
 )
 
 # Get logger
@@ -279,6 +280,8 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
         classify_cells(graph=graph)
 
         doc.add_key_values(graph=graph, prov=prov)
+
+        sort_cell_ids(doc)
 
         return doc
 

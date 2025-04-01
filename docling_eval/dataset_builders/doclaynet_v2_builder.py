@@ -35,6 +35,7 @@ from docling_eval.utils.utils import (
     extract_images,
     from_pil_to_base64uri,
     get_binhash,
+    sort_cell_ids,
 )
 
 # Get logger
@@ -365,22 +366,30 @@ class DocLayNetV2DatasetBuilder(BaseEvaluationDatasetBuilder):
             doc: DoclingDocument to update
             kv_pairs: List of key-value pair dictionaries
         """
-        cells = []
+        cell_by_id: Dict[int, GraphCell] = {}
         links = []
 
         for pair in kv_pairs:
             key_data = pair["key"]
             value_data = pair["value"]
 
-            key_cell = self.create_graph_cell(key_data, GraphCellLabel.KEY)
-            value_cell = self.create_graph_cell(value_data, GraphCellLabel.VALUE)
+            if cell_by_id.get(key_data["cell_id"], None) is None:
+                key_cell = self.create_graph_cell(key_data, GraphCellLabel.KEY)
+                cell_by_id[key_data["cell_id"]] = key_cell
+            else:
+                key_cell = cell_by_id[key_data["cell_id"]]
 
-            cells.append(key_cell)
-            cells.append(value_cell)
+            if cell_by_id.get(value_data["cell_id"], None) is None:
+                value_cell = self.create_graph_cell(value_data, GraphCellLabel.VALUE)
+                cell_by_id[value_data["cell_id"]] = value_cell
+            else:
+                value_cell = cell_by_id[value_data["cell_id"]]
 
             # link between key and value
             kv_link = self.create_graph_link(key_cell, value_cell)
             links.append(kv_link)
+
+        cells = list(cell_by_id.values())
 
         overall_bbox = self.get_overall_bbox(
             links, cell_dict={cell.cell_id: cell for cell in cells}
@@ -402,6 +411,9 @@ class DocLayNetV2DatasetBuilder(BaseEvaluationDatasetBuilder):
 
         # Add the key_value_item to the document.
         doc.add_key_values(graph=graph, prov=prov)
+
+        # sort the cell ids in the graph
+        sort_cell_ids(doc)
 
     # The minimal fix for DocLayNetV2Builder is to add type annotation to link_pairs:
 
