@@ -1,9 +1,11 @@
 import copy
+import platform
 from typing import Dict, Optional, Set
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
+from pydantic import TypeAdapter
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -13,7 +15,7 @@ from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import docling_version
+from docling_eval.utils.utils import docling_version, get_package_version
 
 
 class DoclingPredictionProvider(BasePredictionProvider):
@@ -88,4 +90,33 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""
-        return {"asset": "Docling", "version": docling_version()}
+
+        return {
+            "asset": "Docling",
+            "version": docling_version(),
+            "package_versions": {
+                "docling": get_package_version("docling"),
+                "docling-ibm-models": get_package_version("docling-ibm-models"),
+                "docling-core": get_package_version("docling-core"),
+            },
+            "environment": {
+                "system": platform.system(),
+                "node_name": platform.node(),
+                "release": platform.release(),
+                "machine": platform.machine(),
+            },
+            "options": {
+                k: {
+                    "pipeline_class": v.pipeline_cls.__name__,
+                    "pipeline_options": (
+                        v.pipeline_options.model_dump(
+                            mode="json", exclude_defaults=True
+                        )
+                        if v.pipeline_options is not None
+                        else {}
+                    ),
+                }
+                for k, v in self.doc_converter.format_to_options.items()
+                if k in [InputFormat.PDF, InputFormat.IMAGE]
+            },
+        }
