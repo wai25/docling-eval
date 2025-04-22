@@ -306,7 +306,7 @@ class LayoutEvaluator(BaseEvaluator):
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
-                self.save_intermediate_evalutions(
+                self.save_intermediate_evaluations(
                     "Layout_image", i, doc_id, evaluations_per_image
                 )
 

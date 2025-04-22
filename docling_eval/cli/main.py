@@ -54,6 +54,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
+from docling_eval.evaluators.ocr_evaluator import OCREvaluator
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -350,6 +351,16 @@ def evaluate(
 
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
+    elif modality == EvaluationModality.OCR:
+        ocr_evaluator = OCREvaluator()
+        ocr_evaluation = ocr_evaluator(
+            idir,
+            split=split,
+        )
+
+        with open(save_fn, "w") as fd:
+            json.dump(ocr_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
