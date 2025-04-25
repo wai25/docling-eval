@@ -73,6 +73,13 @@ from docling_eval.prediction_providers.tableformer_provider import (
 
 # Configure logging
 logging.getLogger("docling").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.WARNING)
+logging.getLogger("datasets").setLevel(logging.WARNING)
+logging.getLogger("filelock").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("docling_ibm_models").setLevel(logging.WARNING)
+
 _log = logging.getLogger(__name__)
 
 app = typer.Typer(
@@ -188,14 +195,17 @@ def get_dataset_builder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
         )
     elif benchmark == BenchMarkNames.PLAIN_FILES:
-        assert dataset_source is not None
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for PLAIN_FILES")
+
         return FileDatasetBuilder(
             name=dataset_source.name,
             dataset_source=dataset_source,
             target=target,
             split=split,
+            begin_index=begin_index,
+            end_index=end_index,
         )
-
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
 
@@ -209,7 +219,11 @@ def get_prediction_provider(
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
-    if provider_type == PredictionProviderType.DOCLING:
+    if (
+        provider_type == PredictionProviderType.DOCLING
+        or provider_type == PredictionProviderType.OCR_DOCLING
+        or provider_type == PredictionProviderType.EasyOCR_DOCLING
+    ):
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -233,6 +247,78 @@ def get_prediction_provider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
                 InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.MacOCR_DOCLING:
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="ocrmac",
+        )
+
+        pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,
+            do_table_structure=True,
+        )
+
+        pipeline_options.images_scale = 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.PDF_DOCLING:
+
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="easyocr",
+        )
+
+        pdf_pipeline_options = PdfPipelineOptions(
+            do_ocr=False,
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+
+        pdf_pipeline_options.images_scale = 2.0
+        pdf_pipeline_options.generate_page_images = True
+        pdf_pipeline_options.generate_picture_images = True
+
+        ocr_pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+
+        ocr_pipeline_options.images_scale = 2.0
+        ocr_pipeline_options.generate_page_images = True
+        ocr_pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pdf_pipeline_options.artifacts_path = artifacts_path
+            ocr_pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(
+                    pipeline_options=ocr_pipeline_options
+                ),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
@@ -614,9 +700,14 @@ def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
     bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+    use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
 ):
+    """Create dataset ready to upload to CVAT starting from (ground-truth) dataset."""
     builder = CvatPreannotationBuilder(
-        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size
+        dataset_source=gt_dir,
+        target=output_dir,
+        bucket_size=bucket_size,
+        use_predictions=use_predictions,
     )
     builder.prepare_for_annotation()
 
