@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ from docling.datamodel.pipeline_options import (
 from docling.document_converter import FormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
 from docling.pipeline.vlm_pipeline import VlmPipeline
+from PyPDF2 import PdfReader, PdfWriter
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.datamodels.types import (
@@ -31,6 +33,9 @@ from docling_eval.dataset_builders.cvat_preannotation_builder import (
 )
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
+from docling_eval.dataset_builders.doclingdpbench_builder import (
+    DoclingDPBenchDatasetBuilder,
+)
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
@@ -65,6 +70,10 @@ from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
 )
+from docling_eval.evaluators.timings_evaluator import (
+    DatasetTimingsEvaluation,
+    TimingsEvaluator,
+)
 from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
 from docling_eval.prediction_providers.tableformer_provider import (
@@ -72,13 +81,16 @@ from docling_eval.prediction_providers.tableformer_provider import (
 )
 
 # Configure logging
-logging.getLogger("docling").setLevel(logging.WARNING)
-logging.getLogger("PIL").setLevel(logging.WARNING)
-logging.getLogger("transformers").setLevel(logging.WARNING)
-logging.getLogger("datasets").setLevel(logging.WARNING)
-logging.getLogger("filelock").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("docling_ibm_models").setLevel(logging.WARNING)
+logging_level = logging.WARNING
+# logging_level = logging.DEBUG
+logging.getLogger("docling").setLevel(logging_level)
+logging.getLogger("PIL").setLevel(logging_level)
+logging.getLogger("transformers").setLevel(logging_level)
+logging.getLogger("datasets").setLevel(logging_level)
+logging.getLogger("filelock").setLevel(logging_level)
+logging.getLogger("urllib3").setLevel(logging_level)
+logging.getLogger("docling_ibm_models").setLevel(logging_level)
+logging.getLogger("matplotlib").setLevel(logging_level)
 
 _log = logging.getLogger(__name__)
 
@@ -155,6 +167,9 @@ def get_dataset_builder(
 
     if benchmark == BenchMarkNames.DPBENCH:
         return DPBenchDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.DOCLING_DPBENCH:
+        return DoclingDPBenchDatasetBuilder(**common_params)  # type: ignore
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
         return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
@@ -239,6 +254,7 @@ def get_prediction_provider(
         pipeline_options.images_scale = 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
+        pipeline_options.generate_parsed_pages = True
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
@@ -417,6 +433,17 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
+        return None
+
+    elif modality == EvaluationModality.TIMINGS:
+        timings_evaluator = TimingsEvaluator()
+        evaluation = timings_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
+
+        with open(save_fn, "w") as fd:
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
@@ -440,13 +467,13 @@ def evaluate(
 
     elif modality == EvaluationModality.OCR:
         ocr_evaluator = OCREvaluator()
-        ocr_evaluation = ocr_evaluator(
+        evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
-            json.dump(ocr_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
@@ -538,6 +565,31 @@ def visualize(
     if modality == EvaluationModality.END2END:
         _log.error("END2END visualization not supported")
 
+    elif modality == EvaluationModality.TIMINGS:
+        try:
+            with open(metrics_filename, "r") as fd:
+                timings_evaluation = DatasetTimingsEvaluation.model_validate_json(
+                    fd.read()
+                )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_per_doc",
+                timings_evaluation.timing_per_document_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_per_page",
+                timings_evaluation.timing_per_page_stats,
+            )
+        except Exception as e:
+            _log.error(f"Error processing timings evaluation: {str(e)}")
+
     elif modality == EvaluationModality.LAYOUT:
         try:
             with open(metrics_filename, "r") as fd:
@@ -552,6 +604,30 @@ def visualize(
                 modality,
                 "mAP_0.5_0.95",
                 layout_evaluation.map_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "precision",
+                layout_evaluation.segmentation_precision_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "recall",
+                layout_evaluation.segmentation_recall_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "f1",
+                layout_evaluation.segmentation_f1_stats,
             )
 
             # Append to layout statistics, the AP per classes
@@ -696,6 +772,56 @@ def visualize(
 
 
 @app.command()
+def create_sliced_pdfs(
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    source_dir: Annotated[Path, typer.Option(help="Dataset source path with PDFs")],
+    slice_length: Annotated[int, typer.Option(help="sliding window")] = 1,
+    num_overlap: Annotated[int, typer.Option(help="overlap window")] = 0,
+):
+    """Process multi-page pdf documents into chunks of slice_length with num_overlap overlapping pages in each slice."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if slice_length < 1:
+        return ValueError("slice-length must be at least 1.")
+    if num_overlap > slice_length - 1:
+        return ValueError("num-overlap must be at most one less than slice-length")
+
+    num_overlap = max(num_overlap, 0)
+
+    pdf_paths = glob.glob(f"{source_dir}/**/*.pdf", recursive=True)
+    _log.info(f"#-pdfs: {pdf_paths}")
+
+    for pdf_path in pdf_paths:
+        base_name = os.path.basename(pdf_path).replace(".pdf", "")
+
+        try:
+            with open(pdf_path, "rb") as pdf_file:
+                reader = PdfReader(pdf_file)
+                total_pages = len(reader.pages)
+
+                _log.info(f"Processing {pdf_path} ({total_pages} pages)")
+
+                for start_page in range(0, total_pages, slice_length - num_overlap):
+                    end_page = min(start_page + slice_length, total_pages)
+
+                    # Create a new PDF with the pages in the current window
+                    writer = PdfWriter()
+
+                    for page_num in range(start_page, end_page):
+                        writer.add_page(reader.pages[page_num])
+
+                    # Save the new PDF
+                    output_path = os.path.join(
+                        output_dir, f"{base_name}_ps_{start_page}_pe_{end_page}.pdf"
+                    )
+                    with open(output_path, "wb") as output_file:
+                        writer.write(output_file)
+
+        except Exception as e:
+            _log.error(f"Error processing {pdf_path}: {e}")
+
+
+@app.command()
 def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
@@ -724,6 +850,10 @@ def create_gt(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create ground truth dataset only."""
     gt_dir = output_dir / "gt_dataset"
@@ -741,7 +871,9 @@ def create_gt(
         # Retrieve and save the dataset
         if dataset_builder.must_retrieve:
             dataset_builder.retrieve_input_dataset()
-        dataset_builder.save_to_disk(chunk_size=80)
+        dataset_builder.save_to_disk(
+            chunk_size=chunk_size, do_visualization=do_visualization
+        )
 
         _log.info(f"Ground truth dataset created at {gt_dir}")
     except ValueError as e:
@@ -763,6 +895,7 @@ def create_eval(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     # File provider required options
     file_prediction_format: Annotated[
         Optional[str],
@@ -782,6 +915,9 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -809,6 +945,7 @@ def create_eval(
             file_source_path=file_source_path,
             file_prediction_format=file_format,
             artifacts_path=artifacts_path,
+            do_visualization=do_visualization,
         )
 
         # Get the dataset name from the benchmark
@@ -822,6 +959,7 @@ def create_eval(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
         )
 
         _log.info(f"Evaluation dataset created at {pred_dir}")
@@ -841,6 +979,7 @@ def create(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     prediction_provider: Annotated[
         Optional[PredictionProviderType],
         typer.Option(help="Type of prediction provider to use"),
@@ -851,6 +990,9 @@ def create(
     file_source_path: Annotated[
         Optional[Path], typer.Option(help="Source path for File provider")
     ] = None,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -861,6 +1003,8 @@ def create(
         split=split,
         begin_index=begin_index,
         end_index=end_index,
+        chunk_size=chunk_size,
+        do_visualization=do_visualization,
     )
 
     # Then create evaluation if provider specified
@@ -872,8 +1016,10 @@ def create(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
             file_prediction_format=file_prediction_format,
             file_source_path=file_source_path,
+            do_visualization=do_visualization,
         )
     else:
         _log.info(

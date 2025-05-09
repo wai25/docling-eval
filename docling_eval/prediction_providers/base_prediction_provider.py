@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
+from docling.utils.profiling import ProfilingItem
 from docling.utils.utils import chunkify
 from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.document import DoclingDocument
@@ -31,7 +32,6 @@ from docling_eval.utils.utils import (
 )
 from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters
 
-# Get logger
 _log = logging.getLogger(__name__)
 
 # Default HTML export labels for visualization
@@ -186,6 +186,7 @@ class BasePredictionProvider:
         record: DatasetRecord,
         predicted_doc: Optional[DoclingDocument] = None,
         original_prediction: Optional[str] = None,
+        timings: Optional[dict] = None,
     ) -> DatasetRecordWithPrediction:
         """
         Create a dataset record with prediction from an input record.
@@ -200,6 +201,7 @@ class BasePredictionProvider:
         """
         pred_page_images = []
         pred_pictures = []
+
         if predicted_doc is not None:
             # Extract images from the ground truth document
             predicted_doc, pred_pictures, pred_page_images = extract_images(
@@ -215,9 +217,36 @@ class BasePredictionProvider:
             "predicted_pictures": pred_pictures,
             "original_prediction": original_prediction,
             "prediction_format": self.prediction_format,
+            "prediction_timings": self._prediction_timings(timings),
             "predictor_info": self.info(),
         }
-        return DatasetRecordWithPrediction.model_validate(data)
+        record = DatasetRecordWithPrediction.model_validate(data)
+
+        return record
+
+    def _prediction_timings(self, timings: Optional[dict]) -> Optional[dict]:
+        """Get prediction timings."""
+
+        if isinstance(timings, dict):
+            result = {}
+            for key, val in timings.items():
+                if isinstance(val, ProfilingItem):
+                    result[key] = val.times
+
+            if len(result) == 0:  # datasets does not like empty dicts
+                _log.warning(f"empty timings: {timings}")
+                return None
+
+            # import json
+            # print(json.dumps(result, indent=2))
+
+            return result
+
+        elif timings is None:
+            return None
+        else:
+            _log.warning(f"unknown type of timings: {timings}")
+            return None
 
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """
@@ -284,6 +313,7 @@ class BasePredictionProvider:
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
+        chunk_size: int = 80,
     ) -> None:
         """
         Create a prediction dataset from a ground truth dataset.
@@ -295,6 +325,7 @@ class BasePredictionProvider:
             split: Dataset split to process
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
+            chunk_size: items per chunk
         """
         # Load the dataset
         parquet_files = str(gt_dataset_dir / split / "*.parquet")
@@ -352,7 +383,6 @@ class BasePredictionProvider:
             (target_dataset_dir / "visualizations").mkdir(parents=True, exist_ok=True)
 
         # Process in chunks
-        chunk_size = 80
         max_num_chunks = sys.maxsize
 
         count = 0
